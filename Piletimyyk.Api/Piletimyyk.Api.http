@@ -1,6 +1,6 @@
 @Piletimyyk.Api_HostAddress = http://localhost:5237
 
-GET {{Piletimyyk.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+GET {{Piletimyyk.Api_HostAddress}}/
+Accept: text/html
 
 ###
