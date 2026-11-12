@@ -80,6 +80,92 @@ ticket/print view use Ink Purple text with a colored icon or left border instead
    shows each state with its color *and* name. Sold seat color vs. background is only
    1.56–1.73:1, so the X (10.02:1) is what makes it identifiable.
 
+## Typography
+
+| Role | Font | Weight |
+|---|---|---|
+| Headings (h1–h4) | [Poppins](https://fonts.google.com/specimen/Poppins) | 600 |
+| Body, labels, inputs | [Inter](https://fonts.google.com/specimen/Inter) | 400 (regular), 500 (emphasis, buttons) |
+
+Both fonts come from Google Fonts and include the Latin Extended characters needed for
+Estonian (õ, ä, ö, ü, š, ž). Google Fonts loads the `latin-ext` subset automatically
+when those characters appear on the page.
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Poppins:wght@600&display=swap" rel="stylesheet">
+```
+
+### Type scale
+
+Sizes are in `rem`; px values assume the default 16px root size.
+
+| Element | Size | ≈ px | Font / weight | Line height |
+|---|---|---|---|---|
+| h1 | 2.25rem | 36px | Poppins 600 | 1.2 |
+| h2 | 1.75rem | 28px | Poppins 600 | 1.2 |
+| h3 | 1.375rem | 22px | Poppins 600 | 1.2 |
+| h4 | 1.125rem | 18px | Poppins 600 | 1.2 |
+| Body | 1rem | 16px | Inter 400 | 1.6 |
+| Small | 0.875rem | 14px | Inter 400 | 1.6 |
+| Button | 0.95rem | ≈15px | Inter 500 | 1.2 |
+
+### Numbers
+
+Prices, seat numbers, row numbers, counters and times use
+`font-variant-numeric: tabular-nums` so digits have equal width and columns and
+seat labels line up (e.g. `9` and `12` take the same space per digit).
+
+### CSS
+
+```css
+:root {
+  --font-heading: "Poppins", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.375rem; }
+h4 { font-size: 1.125rem; }
+
+small, .text-small { font-size: 0.875rem; }
+
+button, .btn {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+strong { font-weight: 500; }
+
+.price, .seat, .seat-label, .tabular {
+  font-variant-numeric: tabular-nums;
+}
+```
+
+### Typography and contrast
+
+Body text, small text and button labels are "normal text" in WCAG terms, so they need
+the 4.5:1 pairs from the contrast tables below. Only h1 and h2 (≥ 24px) count as large
+text. Even so, don't use a pair that only passes for large text (for example Light Ruby
+on Deep Plum) for headings either, so that headings and body text follow the same rules.
+
 ## Contrast ratios (WCAG 2.x)
 
 Thresholds: **AA normal text ≥ 4.5:1**, AA large text (≥ 24px, or ≥ 18.66px bold) ≥ 3:1,
