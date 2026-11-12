@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Piletimyyk.Api/Piletimyyk.Api.csproj" />
+  <Project Path="Piletimyyk.Worker/Piletimyyk.Worker.csproj" />
+</Solution>
