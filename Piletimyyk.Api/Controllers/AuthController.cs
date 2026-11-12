@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Piletimyyk.Api.Dtos;
 using Piletimyyk.Api.Services;
@@ -27,5 +29,16 @@ public class AuthController : ControllerBase
         }
 
         return Ok(response);
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(MeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public ActionResult<MeResponse> Me()
+    {
+        return Ok(new MeResponse(
+            User.FindFirstValue(ClaimTypes.Email),
+            User.FindFirstValue(ClaimTypes.Role)));
     }
 }
