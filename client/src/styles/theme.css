@@ -1,0 +1,56 @@
+/*
+ * SitSmart design tokens (see docs/design.md).
+ * Spacing, radius and the type scale come from Radix Themes; these are the brand values
+ * that radix-overrides.css maps onto Radix, plus app-specific colors such as seat states.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Palette ---- */
+  --ink: #1C0F26;          /* page background, text on light surfaces and ruby buttons */
+  --plum: #2A1638;         /* cards / surfaces */
+  --plum-raised: #3A1F4E;  /* hover / selected background */
+  --royal: #4B2465;        /* header, decorative borders */
+  --ruby: #E0457B;         /* primary buttons, links on Ink Purple, selected seat */
+  --rose: #F27A9F;         /* hover / focus, links on Deep Plum */
+  --mist: #F7F2FA;         /* light surfaces (ticket, print) */
+  --off-white: #FBF7FC;    /* text on dark backgrounds */
+
+  --border-strong: #8E7AA8; /* borders that must be visible */
+
+  /* ---- Seat states ---- */
+  --seat-free: #4CC38A;
+  --seat-reserved: #8E7AA8;
+  --seat-sold: #6E2340;     /* always paired with an Off White X icon */
+  --seat-selected: var(--ruby);
+
+  /* ---- Status ---- */
+  --success: #4CC38A;
+  --warning: #F5B947;
+  --error: #FF6464;
+  --error-hover: #FF8A8A;
+  --info: #7DB4F5;
+
+  /* ---- Fonts ---- */
+  --font-heading: "Poppins", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--ink); /* also covers overscroll areas outside the Radix Theme root */
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
