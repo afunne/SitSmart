@@ -180,11 +180,27 @@ component. Don't add it.
 
 ### Shared tokens
 
+All tokens (colors, fonts, type scale, spacing, radius, shadow) are defined in
+`Piletimyyk.Api/wwwroot/css/theme.css`, which also holds the base styles. The design is flat:
+`--shadow` is `none`, and surfaces are separated by color and borders instead.
+
 ```css
 :root {
-  --radius-sm: 6px;   /* inputs, small buttons */
-  --radius: 8px;      /* buttons, toasts */
-  --radius-lg: 12px;  /* cards */
+  /* Spacing */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.5rem;   /* 24px */
+  --space-6: 2rem;     /* 32px */
+  --space-7: 3rem;     /* 48px */
+
+  /* Radius */
+  --radius-sm: 6px;    /* inputs, small buttons */
+  --radius: 10px;      /* buttons, toasts */
+  --radius-lg: 16px;   /* cards */
+
+  --shadow: none;
   --transition: 120ms ease-out;
 }
 
@@ -620,7 +636,7 @@ stacked, at most `24rem` wide.
 
 Style: Deep Plum background, 1px `--border-strong` border (so the toast stands out from the
 content behind it), a 4px left border and an icon in the status color, Off White text with
-the title in Inter 500, and a shadow.
+the title in Inter 500. No shadow.
 
 | Variant | Accent and icon | Screen reader | Dismissal |
 |---|---|---|---|
@@ -700,7 +716,7 @@ Rules:
   border: 1px solid var(--border-strong);
   border-left: 4px solid var(--toast-color);
   border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+  box-shadow: var(--shadow);
 }
 .toast--success { --toast-color: var(--success); }
 .toast--warning { --toast-color: var(--warning); }
