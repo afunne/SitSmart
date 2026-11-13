@@ -107,4 +107,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// React Router deep links (e.g. /login) load the SPA from wwwroot/index.html.
+app.MapFallbackToFile("index.html");
+
 app.Run();

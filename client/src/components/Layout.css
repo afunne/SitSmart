@@ -1,0 +1,35 @@
+.site-header {
+  background: var(--royal);
+}
+
+/* The logo has dark letters on a transparent background, so it sits on a light plate.
+   The image has wide empty margins; .logo-crop shows only the wordmark
+   (x 443–1325, y 140–428 of the 1640×664 file) at 1/8 scale. */
+.logo-plate {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--mist);
+}
+
+.logo-crop {
+  position: relative;
+  width: 110px;
+  height: 36px;
+  overflow: hidden;
+}
+
+.logo-crop img {
+  position: absolute;
+  top: -17.5px;
+  left: -55.4px;
+  width: 205px;
+  max-width: none;
+  height: auto;
+}
+
+/* Rose Ruby links on Royal Purple: 4.63:1. The current page is Off White and underlined. */
+.nav-link[aria-current='page'] {
+  color: var(--off-white);
+  text-decoration-line: underline;
+}
