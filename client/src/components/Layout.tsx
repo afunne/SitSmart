@@ -14,7 +14,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/', label: 'Üritused' },
   { to: '/my-tickets', label: 'Minu piletid', roles: ['Buyer'] },
-  { to: '/entry', label: 'Sissepääs', roles: ['Controller'] },
+  { to: '/controller', label: 'Sissepääs', roles: ['Controller'] },
   { to: '/admin/halls', label: 'Saalid', roles: ['Admin'] },
   { to: '/admin/events', label: 'Üritused', roles: ['Admin'] },
   { to: '/admin/stats', label: 'Statistika', roles: ['Admin'] },

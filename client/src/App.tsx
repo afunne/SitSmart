@@ -3,7 +3,7 @@ import { RouterProvider } from 'react-router/dom'
 import { AuthProvider } from './auth/AuthContext.tsx'
 import Layout from './components/Layout.tsx'
 import EventsPage from './pages/EventsPage.tsx'
-import LoginPage from './pages/LoginPage.tsx'
+import Login from './pages/Login.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import Styleguide from './pages/Styleguide.tsx'
 
@@ -12,7 +12,7 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <EventsPage /> },
-      { path: 'login', element: <LoginPage /> },
+      { path: 'login', element: <Login /> },
       { path: 'styleguide', element: <Styleguide /> },
       { path: '*', element: <NotFoundPage /> },
     ],
