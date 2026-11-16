@@ -55,6 +55,9 @@ public class AppDbContext : DbContext
             ev.Property(e => e.Description)
                 .HasMaxLength(1000);
 
+            ev.Property(e => e.ImageUrl)
+                .HasMaxLength(500);
+
             ev.Property(e => e.StartTime)
                 .IsRequired();
 
