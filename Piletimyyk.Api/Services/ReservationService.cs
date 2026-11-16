@@ -14,11 +14,19 @@ public interface IReservationService
     /// in another hall. Conflict: seat is sold or held, or the user is at the reservation limit.
     /// </summary>
     Task<ServiceResult<ReservationDto>> ReserveAsync(int eventId, int seatId, int userId);
+
+    /// <summary>
+    /// Releases a hold. NotFound: no such reservation. Forbidden: it belongs to another user.
+    /// </summary>
+    Task<ServiceResult> CancelAsync(int reservationId, int userId);
 }
 
 public class ReservationService : IReservationService
 {
     public const int MaxActiveReservationsPerUser = 6;
+
+    /// <summary>Same message for sold and held seats: buyers don't need to know which.</summary>
+    private const string SeatTaken = "Koht on juba võetud";
 
     private readonly AppDbContext _db;
     private readonly ReservationOptions _options;
@@ -73,7 +81,7 @@ public class ReservationService : IReservationService
 
         if (await _db.Tickets.AnyAsync(t => t.EventId == eventId && t.SeatId == seatId))
         {
-            return ServiceResult<ReservationDto>.Conflict("See koht on juba müüdud.");
+            return ServiceResult<ReservationDto>.Conflict(SeatTaken);
         }
 
         var holder = await _db.Reservations
@@ -85,7 +93,7 @@ public class ReservationService : IReservationService
         {
             return ServiceResult<ReservationDto>.Conflict(holder == userId
                 ? "Sa oled selle koha juba broneerinud."
-                : "See koht on juba broneeritud.");
+                : SeatTaken);
         }
 
         // Across all events, so one buyer can't block seats everywhere.
@@ -111,5 +119,25 @@ public class ReservationService : IReservationService
 
         return ServiceResult<ReservationDto>.Ok(new ReservationDto(
             reservation.Id, eventId, seatId, seat.Row, seat.Number, reservation.ExpiresAt));
+    }
+
+    public async Task<ServiceResult> CancelAsync(int reservationId, int userId)
+    {
+        var reservation = await _db.Reservations.FindAsync(reservationId);
+        if (reservation is null)
+        {
+            return ServiceResult.NotFound($"Broneeringut {reservationId} ei leitud.");
+        }
+
+        if (reservation.UserId != userId)
+        {
+            return ServiceResult.Forbidden("Saad tühistada ainult enda broneeringuid.");
+        }
+
+        // An expired hold is deleted too; the seat is already free, this just tidies up.
+        _db.Reservations.Remove(reservation);
+        await _db.SaveChangesAsync();
+
+        return ServiceResult.Ok();
     }
 }

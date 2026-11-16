@@ -12,4 +12,11 @@ public static class ClaimsPrincipalExtensions
     {
         return int.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
     }
+
+    /// <summary>The logged-in user's id, for actions behind [Authorize].</summary>
+    public static int GetRequiredUserId(this ClaimsPrincipal user)
+    {
+        return user.GetUserId()
+            ?? throw new InvalidOperationException("Authenticated user has no NameIdentifier claim.");
+    }
 }

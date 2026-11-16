@@ -1,11 +1,14 @@
 namespace Piletimyyk.Api.Services;
 
-/// <summary>Why a service call failed. Controllers map these to 404 / 400 / 409.</summary>
+/// <summary>Why a service call failed. Controllers map these to 404 / 400 / 409 / 403.</summary>
 public enum ServiceErrorType
 {
     NotFound,
     Validation,
-    Conflict
+    Conflict,
+
+    /// <summary>The resource exists but belongs to someone else.</summary>
+    Forbidden
 }
 
 /// <summary>Outcome of a service call without a return value.</summary>
@@ -29,6 +32,7 @@ public class ServiceResult
     public static ServiceResult NotFound(string error) => new(false, error, ServiceErrorType.NotFound);
     public static ServiceResult Validation(string error) => new(false, error, ServiceErrorType.Validation);
     public static ServiceResult Conflict(string error) => new(false, error, ServiceErrorType.Conflict);
+    public static ServiceResult Forbidden(string error) => new(false, error, ServiceErrorType.Forbidden);
 }
 
 /// <summary>Outcome of a service call that returns a value on success.</summary>
@@ -47,4 +51,5 @@ public class ServiceResult<T> : ServiceResult
     public new static ServiceResult<T> NotFound(string error) => new(false, default, error, ServiceErrorType.NotFound);
     public new static ServiceResult<T> Validation(string error) => new(false, default, error, ServiceErrorType.Validation);
     public new static ServiceResult<T> Conflict(string error) => new(false, default, error, ServiceErrorType.Conflict);
+    public new static ServiceResult<T> Forbidden(string error) => new(false, default, error, ServiceErrorType.Forbidden);
 }

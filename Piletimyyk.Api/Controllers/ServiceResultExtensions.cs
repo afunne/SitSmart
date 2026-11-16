@@ -5,7 +5,8 @@ namespace Piletimyyk.Api.Controllers;
 
 /// <summary>
 /// Maps ServiceResult to HTTP responses. Errors are returned as ProblemDetails with the
-/// user-facing message in "detail": NotFound → 404, Validation → 400, Conflict → 409.
+/// user-facing message in "detail" (and "message"):
+/// NotFound → 404, Validation → 400, Conflict → 409, Forbidden → 403.
 /// </summary>
 public static class ServiceResultExtensions
 {
@@ -40,9 +41,16 @@ public static class ServiceResultExtensions
             ServiceErrorType.NotFound => StatusCodes.Status404NotFound,
             ServiceErrorType.Validation => StatusCodes.Status400BadRequest,
             ServiceErrorType.Conflict => StatusCodes.Status409Conflict,
+            ServiceErrorType.Forbidden => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status500InternalServerError
         };
 
-        return controller.Problem(detail: result.Error, statusCode: statusCode);
+        var problem = controller.Problem(detail: result.Error, statusCode: statusCode);
+
+        // Also expose the message as "message", so clients can read either
+        // { "detail": ... } (ProblemDetails) or { "message": ... }.
+        ((ProblemDetails)problem.Value!).Extensions["message"] = result.Error;
+
+        return problem;
     }
 }
