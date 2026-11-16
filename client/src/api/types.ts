@@ -1,9 +1,9 @@
 // TypeScript types for the API DTOs. ASP.NET serializes properties in camelCase and
 // DateTime values as ISO 8601 strings (UTC values end in "Z"), so dates are typed as string.
 //
-// LoginResponse and MeResponse match Piletimyyk.Api/Dtos. The other DTOs don't exist in the
-// backend yet; they are based on the EF models in Piletimyyk.Api/Models and must be kept in
-// sync once the endpoints are written.
+// Auth, halls, events, seats and reservations match Piletimyyk.Api/Dtos. Tickets and
+// statistics don't exist in the backend yet; they are based on the EF models in
+// Piletimyyk.Api/Models and must be kept in sync once those endpoints are written.
 
 export type Role = 'Admin' | 'Buyer' | 'Controller' | 'Service'
 
@@ -29,37 +29,80 @@ export interface MeResponse {
   role: Role | null
 }
 
-// ---- Events and halls (provisional) ----
+// ---- Halls (Dtos/HallDto.cs, CreateHallRequest.cs, UpdateHallRequest.cs) ----
 
 export interface HallDto {
   id: number
   name: string
+  rows: number
+  seatsPerRow: number
   seatCount: number
 }
+
+/** Name: 1–100 characters. Rows and seatsPerRow: 1–50. */
+export interface CreateHallRequest {
+  name: string
+  rows: number
+  seatsPerRow: number
+}
+
+/** Only the name can change; the seat layout is fixed when the hall is created. */
+export interface UpdateHallRequest {
+  name: string
+}
+
+// ---- Events (Dtos/EventDto.cs, CreateEventRequest.cs, UpdateEventRequest.cs) ----
 
 export interface EventDto {
   id: number
   name: string
-  description: string | null
-  startTime: IsoDateTime
-  price: number
+  description: string
+  imageUrl: string | null
+  startsAt: IsoDateTime
   hallId: number
   hallName: string
+  price: number
+  totalSeats: number
 }
 
-// ---- Seats (provisional) ----
+/** startsAt must be in UTC (e.g. new Date(local).toISOString()) and in the future. */
+export interface CreateEventRequest {
+  name: string
+  description: string
+  imageUrl: string | null
+  startsAt: IsoDateTime
+  hallId: number
+  price: number
+}
 
-/** 'Mine' = reserved or bought by the current user. */
+export type UpdateEventRequest = CreateEventRequest
+
+// ---- Seats (Dtos/SeatMapDto.cs, SeatDto.cs, SeatStates.cs) ----
+
+/** 'Mine' = held by an active reservation of the current user. */
 export type SeatState = 'Free' | 'Reserved' | 'Sold' | 'Mine'
 
 export interface SeatDto {
-  id: number
+  seatId: number
   row: number
   number: number
   state: SeatState
 }
 
-// ---- Reservations and tickets (provisional) ----
+/** Seats are ordered by row, then number. */
+export interface SeatMapDto {
+  eventId: number
+  hallName: string
+  rows: number
+  seatsPerRow: number
+  seats: SeatDto[]
+}
+
+// ---- Reservations (Dtos/ReservationDto.cs, CreateReservationRequest.cs) ----
+
+export interface CreateReservationRequest {
+  seatId: number
+}
 
 export interface ReservationDto {
   id: number
@@ -67,9 +110,10 @@ export interface ReservationDto {
   seatId: number
   row: number
   number: number
-  createdAt: IsoDateTime
   expiresAt: IsoDateTime
 }
+
+// ---- Tickets (provisional) ----
 
 export interface TicketDto {
   id: number
