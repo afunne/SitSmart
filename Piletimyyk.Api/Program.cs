@@ -65,6 +65,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHallService, HallService>();
 builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<ISeatService, SeatService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
