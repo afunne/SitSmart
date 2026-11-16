@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import {
   AlertDialog,
   Button,
-  Callout,
   Container,
   Dialog,
   Flex,
@@ -15,8 +14,9 @@ import {
   TextField,
   Tooltip,
 } from '@radix-ui/themes'
-import { ApiError, apiFetch } from '../../api/client.ts'
+import { apiFetch, getErrorMessage } from '../../api/client.ts'
 import type { CreateHallRequest, HallDto, UpdateHallRequest } from '../../api/types.ts'
+import ErrorCallout from '../../components/ErrorCallout.tsx'
 
 // Same limits as HallService in the API.
 const MAX_NAME_LENGTH = 100
@@ -24,13 +24,6 @@ const MAX_ROWS = 50
 const MAX_SEATS_PER_ROW = 50
 
 type ErrorHandler = (message: string | null) => void
-
-/** API errors carry the server's Estonian message; anything else is a network problem. */
-function errorMessage(err: unknown): string {
-  return err instanceof ApiError
-    ? err.message
-    : 'Serveriga ei saanud ühendust. Kontrolli internetiühendust ja proovi uuesti.'
-}
 
 const byName = (a: HallDto, b: HallDto) => a.name.localeCompare(b.name, 'et')
 
@@ -44,7 +37,7 @@ export default function AdminHalls() {
     let cancelled = false
     apiFetch<HallDto[]>('/api/halls')
       .then(data => { if (!cancelled) setHalls(data) })
-      .catch(err => { if (!cancelled) setLoadError(errorMessage(err)) })
+      .catch(err => { if (!cancelled) setLoadError(getErrorMessage(err)) })
     return () => { cancelled = true }
   }, [])
 
@@ -110,15 +103,6 @@ export default function AdminHalls() {
   )
 }
 
-function ErrorCallout({ message }: { message: string }) {
-  return (
-    <Callout.Root color="red" role="alert" mb="4">
-      <Callout.Icon><i className="ti ti-alert-circle" aria-hidden="true" /></Callout.Icon>
-      <Callout.Text>{message}</Callout.Text>
-    </Callout.Root>
-  )
-}
-
 interface HallRowProps {
   hall: HallDto
   onRenamed: (hall: HallDto) => void
@@ -153,7 +137,7 @@ function HallRow({ hall, onRenamed, onDeleted, onError }: HallRowProps) {
       onRenamed(await apiFetch<HallDto>(`/api/halls/${hall.id}`, { method: 'PUT', body }))
       setEditing(false)
     } catch (err) {
-      onError(errorMessage(err))
+      onError(getErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -242,7 +226,7 @@ function DeleteHallDialog({ hall, onDeleted, onError }: DeleteHallDialogProps) {
       onDeleted(hall.id)
     } catch (err) {
       setOpen(false)
-      onError(errorMessage(err))
+      onError(getErrorMessage(err))
     } finally {
       setDeleting(false)
     }
@@ -311,7 +295,7 @@ function CreateHallDialog({ onCreated }: { onCreated: (hall: HallDto) => void })
       onCreated(await apiFetch<HallDto>('/api/halls', { method: 'POST', body }))
       setOpen(false)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(getErrorMessage(err))
     } finally {
       setSaving(false)
     }

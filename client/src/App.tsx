@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router/dom'
 import { AuthProvider } from './auth/AuthContext.tsx'
 import RequireRole from './auth/RequireRole.tsx'
 import Layout from './components/Layout.tsx'
+import AdminEvents from './pages/admin/AdminEvents.tsx'
 import AdminHalls from './pages/admin/AdminHalls.tsx'
 import EventsPage from './pages/EventsPage.tsx'
 import Login from './pages/Login.tsx'
@@ -21,6 +22,14 @@ const router = createBrowserRouter([
         element: (
           <RequireRole roles={['Admin']}>
             <AdminHalls />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'admin/events',
+        element: (
+          <RequireRole roles={['Admin']}>
+            <AdminEvents />
           </RequireRole>
         ),
       },
