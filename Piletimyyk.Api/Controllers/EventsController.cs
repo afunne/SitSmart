@@ -13,10 +13,12 @@ namespace Piletimyyk.Api.Controllers;
 public class EventsController : ControllerBase
 {
     private readonly IEventService _eventService;
+    private readonly ISeatService _seatService;
 
-    public EventsController(IEventService eventService)
+    public EventsController(IEventService eventService, ISeatService seatService)
     {
         _eventService = eventService;
+        _seatService = seatService;
     }
 
     [HttpGet]
@@ -34,6 +36,20 @@ public class EventsController : ControllerBase
     public async Task<ActionResult<EventDto>> GetById(int id)
     {
         return this.ToActionResult(await _eventService.GetByIdAsync(id));
+    }
+
+    /// <summary>
+    /// Seat map with the state of every seat. With a valid token, the caller's own
+    /// reservations are shown as "Mine"; without one (or with an invalid one) the
+    /// request is treated as anonymous.
+    /// </summary>
+    [HttpGet("{id:int}/seats")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(SeatMapDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SeatMapDto>> GetSeats(int id)
+    {
+        return this.ToActionResult(await _seatService.GetSeatMapAsync(id, User.GetUserId()));
     }
 
     [HttpPost]
