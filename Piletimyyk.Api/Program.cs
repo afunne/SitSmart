@@ -61,11 +61,17 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
+builder.Services.AddOptions<ReservationOptions>()
+    .Bind(builder.Configuration.GetSection(ReservationOptions.SectionName))
+    .Validate(o => o.HoldMinutes > 0, "Reservations:HoldMinutes must be greater than 0.")
+    .ValidateOnStart();
+
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHallService, HallService>();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<ISeatService, SeatService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
