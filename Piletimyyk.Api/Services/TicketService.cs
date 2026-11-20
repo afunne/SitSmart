@@ -11,15 +11,46 @@ public interface ITicketService
     /// (most recent first).
     /// </summary>
     Task<IReadOnlyList<TicketDto>> GetForUserAsync(int userId);
+
+    /// <summary>
+    /// PNG QR code of the ticket code. NotFound: no such ticket. Forbidden: the ticket belongs to
+    /// someone else and the caller isn't an admin.
+    /// </summary>
+    Task<ServiceResult<byte[]>> GetQrPngAsync(string code, int userId, bool isAdmin);
 }
 
 public class TicketService : ITicketService
 {
     private readonly AppDbContext _db;
+    private readonly IQrCodeService _qrCodeService;
 
-    public TicketService(AppDbContext db)
+    public TicketService(AppDbContext db, IQrCodeService qrCodeService)
     {
         _db = db;
+        _qrCodeService = qrCodeService;
+    }
+
+    public async Task<ServiceResult<byte[]>> GetQrPngAsync(string code, int userId, bool isAdmin)
+    {
+        // Codes are generated in upper case; accept a hand-typed lower-case one too.
+        var normalized = code.Trim().ToUpperInvariant();
+
+        var ticket = await _db.Tickets.AsNoTracking()
+            .Where(t => t.Code == normalized)
+            .Select(t => new { t.Code, t.UserId })
+            .SingleOrDefaultAsync();
+
+        if (ticket is null)
+        {
+            return ServiceResult<byte[]>.NotFound("Piletit ei leitud.");
+        }
+
+        if (ticket.UserId != userId && !isAdmin)
+        {
+            return ServiceResult<byte[]>.Forbidden("Saad vaadata ainult enda pileteid.");
+        }
+
+        return ServiceResult<byte[]>.Ok(_qrCodeService.GeneratePng(ticket.Code));
     }
 
     public async Task<IReadOnlyList<TicketDto>> GetForUserAsync(int userId)

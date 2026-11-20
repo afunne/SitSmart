@@ -28,6 +28,12 @@ public static class ServiceResultExtensions
             : controller.ToErrorResult(result);
     }
 
+    /// <summary>200 OK with the bytes as a file of <paramref name="contentType"/>, or the error response.</summary>
+    public static IActionResult ToFileResult(this ControllerBase controller, ServiceResult<byte[]> result, string contentType)
+    {
+        return result.Success ? controller.File(result.Value!, contentType) : controller.ToErrorResult(result);
+    }
+
     /// <summary>204 No Content, or the error response.</summary>
     public static IActionResult ToNoContentResult(this ControllerBase controller, ServiceResult result)
     {

@@ -75,6 +75,7 @@ builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddSingleton<ITicketCodeGenerator, TicketCodeGenerator>();
+builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
