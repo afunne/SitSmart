@@ -71,7 +71,8 @@ public class PurchaseService : IPurchaseService
         var ev = reservation.Event;
         var seat = reservation.Seat;
         return ServiceResult<TicketDto>.Ok(new TicketDto(
-            ticket.Id, ticket.Code, ev.Name, ev.StartTime, ev.Hall.Name,
+            // StartTime comes from SQLite without a DateTimeKind; it's stored as UTC.
+            ticket.Id, ticket.Code, ev.Name, DateTime.SpecifyKind(ev.StartTime, DateTimeKind.Utc), ev.Hall.Name,
             seat.Row, seat.Number, ticket.Price, ticket.PurchasedAt, ticket.UsedAt));
     }
 }

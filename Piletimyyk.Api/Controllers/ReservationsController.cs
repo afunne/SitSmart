@@ -6,7 +6,7 @@ using Piletimyyk.Api.Services;
 
 namespace Piletimyyk.Api.Controllers;
 
-/// <summary>Buyers hold seats while they check out, and can release them again.</summary>
+/// <summary>Buyers hold seats while they check out, then buy them or release them again.</summary>
 [ApiController]
 [Authorize(Roles = Roles.Buyer)]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -15,9 +15,12 @@ public class ReservationsController : ControllerBase
 {
     private readonly IReservationService _reservationService;
 
-    public ReservationsController(IReservationService reservationService)
+    private readonly IPurchaseService _purchaseService;
+
+    public ReservationsController(IReservationService reservationService, IPurchaseService purchaseService)
     {
         _reservationService = reservationService;
+        _purchaseService = purchaseService;
     }
 
     /// <summary>Holds a seat for Reservations:HoldMinutes. 409 if the seat is taken or the user is at the limit.</summary>
@@ -43,5 +46,15 @@ public class ReservationsController : ControllerBase
     public async Task<IActionResult> Cancel(int id)
     {
         return this.ToNoContentResult(await _reservationService.CancelAsync(id, User.GetRequiredUserId()));
+    }
+
+    /// <summary>Buys a held seat: the reservation becomes a ticket. 409 if the hold has expired.</summary>
+    [HttpPost("api/reservations/{id:int}/purchase")]
+    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TicketDto>> Purchase(int id)
+    {
+        return this.ToActionResult(await _purchaseService.PurchaseAsync(id, User.GetRequiredUserId()));
     }
 }
