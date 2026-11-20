@@ -1,0 +1,24 @@
+/* Full-height cards in the grid, with the button pinned to the bottom. */
+.event-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.event-card-action {
+  margin-top: auto;
+}
+
+/* Same 16:9 frame for every picture; other sizes are cropped, not stretched. */
+.event-card-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+/* The default picture is pixel art; keep its pixels sharp when scaled. */
+.event-card-image--pixel {
+  image-rendering: pixelated;
+}

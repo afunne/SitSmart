@@ -5,7 +5,7 @@ import RequireRole from './auth/RequireRole.tsx'
 import Layout from './components/Layout.tsx'
 import AdminEvents from './pages/admin/AdminEvents.tsx'
 import AdminHalls from './pages/admin/AdminHalls.tsx'
-import EventsPage from './pages/EventsPage.tsx'
+import Events from './pages/Events.tsx'
 import Login from './pages/Login.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import Styleguide from './pages/Styleguide.tsx'
@@ -14,7 +14,7 @@ const router = createBrowserRouter([
   {
     element: <Layout />,
     children: [
-      { index: true, element: <EventsPage /> },
+      { index: true, element: <Events /> },
       { path: 'login', element: <Login /> },
       { path: 'styleguide', element: <Styleguide /> },
       {
