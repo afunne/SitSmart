@@ -26,6 +26,8 @@
     ./tests/double-sale.ps1
     ./tests/double-sale.ps1 -BaseUrl https://localhost:7083 -EventId 2
 #>
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password',
+    Justification = 'Password of the seeded test buyers (DbSeeder), not a real secret.')]
 param(
     [string]$BaseUrl = 'http://localhost:5237',
     [int]$EventId,
@@ -34,6 +36,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $BaseUrl = $BaseUrl.TrimEnd('/')
+
+try {
+    $null = Invoke-WebRequest -Uri "$BaseUrl/api/events" -SkipHttpErrorCheck
+}
+catch {
+    throw "Can't reach the API at $BaseUrl. Start it first (dotnet run --project Piletimyyk.Api) or pass -BaseUrl."
+}
 
 # Log in before the race, so password hashing doesn't skew who starts first.
 $buyers = 'buyer@sitsmart.ee', 'buyer2@sitsmart.ee' | ForEach-Object {
@@ -45,7 +54,9 @@ $buyers = 'buyer@sitsmart.ee', 'buyer2@sitsmart.ee' | ForEach-Object {
 
 if (-not $EventId) {
     $now = [DateTimeOffset]::UtcNow
-    $upcoming = Invoke-RestMethod -Uri "$BaseUrl/api/events" |
+    # Assign first: Invoke-RestMethod pipes a JSON array as one object, not item by item.
+    $events = Invoke-RestMethod -Uri "$BaseUrl/api/events"
+    $upcoming = $events |
         Where-Object { [DateTimeOffset]$_.startsAt -gt $now } |
         Sort-Object { [DateTimeOffset]$_.startsAt } |
         Select-Object -First 1
