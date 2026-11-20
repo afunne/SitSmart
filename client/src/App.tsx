@@ -8,6 +8,7 @@ import AdminHalls from './pages/admin/AdminHalls.tsx'
 import EventDetail from './pages/EventDetail.tsx'
 import Events from './pages/Events.tsx'
 import Login from './pages/Login.tsx'
+import MyTickets from './pages/MyTickets.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import Styleguide from './pages/Styleguide.tsx'
 
@@ -17,6 +18,14 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Events /> },
       { path: 'events/:id', element: <EventDetail /> },
+      {
+        path: 'my-tickets',
+        element: (
+          <RequireRole roles={['Buyer']}>
+            <MyTickets />
+          </RequireRole>
+        ),
+      },
       { path: 'login', element: <Login /> },
       { path: 'styleguide', element: <Styleguide /> },
       {

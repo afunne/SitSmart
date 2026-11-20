@@ -24,11 +24,28 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  * the session is cleared and the browser goes to /login.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const response = await send(path, options, 'application/json')
+  if (response.status === 204) return undefined as T
+  const text = await response.text()
+  return (text ? JSON.parse(text) : undefined) as T
+}
+
+/**
+ * Like apiFetch, but returns the response body as a Blob. For files that need the token,
+ * e.g. ticket QR codes: an <img src> can't send an Authorization header.
+ */
+export async function apiFetchBlob(path: string, options: ApiFetchOptions = {}): Promise<Blob> {
+  const response = await send(path, options, '*/*')
+  return response.blob()
+}
+
+/** Sends the request with the token; handles 401 and other errors as described on apiFetch. */
+async function send(path: string, options: ApiFetchOptions, accept: string): Promise<Response> {
   const { body, headers, anonymous, ...init } = options
   const session = anonymous ? null : getSession()
 
   const requestHeaders = new Headers(headers)
-  requestHeaders.set('Accept', 'application/json')
+  requestHeaders.set('Accept', accept)
   if (body !== undefined) requestHeaders.set('Content-Type', 'application/json')
   if (session) requestHeaders.set('Authorization', `Bearer ${session.token}`)
 
@@ -49,9 +66,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     throw new ApiError(response.status, await readErrorMessage(response))
   }
 
-  if (response.status === 204) return undefined as T
-  const text = await response.text()
-  return (text ? JSON.parse(text) : undefined) as T
+  return response
 }
 
 /** Uses ASP.NET ProblemDetails (detail / title) when present, otherwise a generic message. */
