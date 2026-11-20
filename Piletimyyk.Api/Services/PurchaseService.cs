@@ -10,13 +10,15 @@ public interface IPurchaseService
     /// <summary>
     /// Turns the user's reservation into a ticket at the event's current price and deletes the
     /// reservation. NotFound: no such reservation. Forbidden: it belongs to another user.
-    /// Conflict: the hold has expired.
+    /// Conflict: the hold has expired, or the seat is already sold.
     /// </summary>
     Task<ServiceResult<TicketDto>> PurchaseAsync(int reservationId, int userId);
 }
 
 public class PurchaseService : IPurchaseService
 {
+    private const string SeatSold = "See koht on juba müüdud.";
+
     private readonly AppDbContext _db;
     private readonly ITicketCodeGenerator _codeGenerator;
 
@@ -53,6 +55,16 @@ public class PurchaseService : IPurchaseService
             return ServiceResult<TicketDto>.Conflict("Broneering on aegunud");
         }
 
+        // Normally unreachable: a valid hold means the seat wasn't sold when it was taken.
+        // This check is not the guarantee against double sale, only a clear message. The unique
+        // index on Tickets (EventId, SeatId) is: it rejects a second ticket for the seat no
+        // matter how it gets inserted or what isolation level the database uses, and the catch
+        // around SaveChanges turns that into the same 409.
+        if (await _db.Tickets.AnyAsync(t => t.EventId == reservation.EventId && t.SeatId == reservation.SeatId))
+        {
+            return ServiceResult<TicketDto>.Conflict(SeatSold);
+        }
+
         var ticket = new Ticket
         {
             Code = _codeGenerator.Generate(),
@@ -65,7 +77,18 @@ public class PurchaseService : IPurchaseService
 
         _db.Tickets.Add(ticket);
         _db.Reservations.Remove(reservation);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
+        {
+            // The seat was sold in the meantime. (Tickets.Code is unique too, but a code
+            // collision is ~2^-60 likely; it would also land here and the buyer can retry,
+            // since the rollback keeps the reservation.)
+            return ServiceResult<TicketDto>.Conflict(SeatSold);
+        }
+
         await transaction.CommitAsync();
 
         var ev = reservation.Event;

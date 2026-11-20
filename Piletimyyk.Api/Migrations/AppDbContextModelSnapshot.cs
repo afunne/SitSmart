@@ -97,7 +97,8 @@ namespace Piletimyyk.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("EventId", "SeatId");
+                    b.HasIndex("EventId", "SeatId")
+                        .IsUnique();
 
                     b.ToTable("Reservations");
                 });

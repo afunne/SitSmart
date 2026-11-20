@@ -74,7 +74,14 @@ public class ReservationService : IReservationService
         // Availability is checked inside the transaction, right before inserting. With SQLite,
         // BeginTransaction issues BEGIN IMMEDIATE, which takes the database write lock at once:
         // a second request for the same seat waits here until this one commits, then sees the
-        // new reservation and gets a Conflict. Without the transaction both could pass the check.
+        // new reservation and gets a Conflict.
+        //
+        // These checks are not what guarantees one hold per seat, though: that relies on SQLite's
+        // locking, and on a database with weaker isolation (e.g. READ COMMITTED) two requests
+        // could both pass them. The unique index on Reservations (EventId, SeatId) is the real
+        // guarantee; the checks exist to return a specific message, and the catch around
+        // SaveChanges turns a lost race into the same 409. A hold on an already sold seat can't
+        // lead to a double sale either: the unique index on Tickets rejects the purchase.
         await using var transaction = await _db.Database.BeginTransactionAsync();
 
         var now = DateTime.UtcNow;
@@ -113,8 +120,23 @@ public class ReservationService : IReservationService
             ExpiresAt = now.AddMinutes(_options.HoldMinutes)
         };
 
+        // An expired hold no longer blocks the seat, but its row would still hit the unique
+        // index, so remove it first. Part of the transaction, so a failed insert restores it.
+        await _db.Reservations
+            .Where(r => r.EventId == eventId && r.SeatId == seatId && r.ExpiresAt <= now)
+            .ExecuteDeleteAsync();
+
         _db.Reservations.Add(reservation);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
+        {
+            // Someone else got the seat between the checks and the insert.
+            return ServiceResult<ReservationDto>.Conflict(SeatTaken);
+        }
+
         await transaction.CommitAsync();
 
         return ServiceResult<ReservationDto>.Ok(new ReservationDto(

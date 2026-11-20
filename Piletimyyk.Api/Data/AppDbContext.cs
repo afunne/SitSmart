@@ -88,7 +88,10 @@ public class AppDbContext : DbContext
             reservation.Property(r => r.ExpiresAt)
                 .IsRequired();
 
-            reservation.HasIndex(r => new { r.EventId, r.SeatId });
+            // One hold row per seat per event, expired or not. This is what makes a double hold
+            // impossible; ReservationService deletes an expired hold before adding a new one.
+            reservation.HasIndex(r => new { r.EventId, r.SeatId })
+                .IsUnique();
             reservation.HasIndex(r => r.ExpiresAt);
 
             reservation.HasOne(r => r.Event)
@@ -120,6 +123,9 @@ public class AppDbContext : DbContext
                 .IsRequired()
                 .HasColumnType("decimal(10,2)");
 
+            // The real guarantee against selling a seat twice: the database rejects a second
+            // ticket for the same seat, whatever code path or isolation level tries to insert it.
+            // The services' "is it sold?" checks only exist to give a clear message.
             ticket.HasIndex(t => new { t.EventId, t.SeatId })
                 .IsUnique();
 
