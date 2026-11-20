@@ -8,6 +8,13 @@ export function formatDateTime(iso: string): string {
   return dateTimeFormat.format(new Date(iso))
 }
 
+const timeFormat = new Intl.DateTimeFormat('et-EE', { timeStyle: 'short' })
+
+/** "19:00" in the browser's time zone. */
+export function formatTime(iso: string): string {
+  return timeFormat.format(new Date(iso))
+}
+
 /** "15,00 €" */
 export function formatPrice(price: number): string {
   return priceFormat.format(price)

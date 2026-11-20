@@ -39,6 +39,14 @@ public class ReservationsController : ControllerBase
             : this.ToActionResult(result);
     }
 
+    /// <summary>The caller's active holds (all events), so the client can list and cancel them after a reload.</summary>
+    [HttpGet("api/reservations/my")]
+    [ProducesResponseType(typeof(IReadOnlyList<ReservationDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ReservationDto>>> GetMine()
+    {
+        return Ok(await _reservationService.GetActiveAsync(User.GetRequiredUserId()));
+    }
+
     /// <summary>Cancels one of the caller's own holds.</summary>
     [HttpDelete("api/reservations/{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

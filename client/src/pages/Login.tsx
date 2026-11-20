@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Box, Button, Callout, Card, Container, Flex, Heading, Section, Text, TextField } from '@radix-ui/themes'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { ApiError } from '../api/client.ts'
 import type { Role } from '../api/types.ts'
 import { useAuth } from '../auth/AuthContext.tsx'
@@ -13,6 +13,7 @@ const homeByRole: Partial<Record<Role, string>> = {
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +26,9 @@ export default function Login() {
 
     try {
       const user = await login(email.trim(), password)
-      navigate(homeByRole[user.role] ?? '/', { replace: true })
+      // Back to the page that sent us here (RequireRole, seat map), otherwise the role's home.
+      const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from
+      navigate(from ? from.pathname + from.search : (homeByRole[user.role] ?? '/'), { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Vale e-post või parool')

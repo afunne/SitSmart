@@ -19,6 +19,9 @@ public interface IReservationService
     /// Releases a hold. NotFound: no such reservation. Forbidden: it belongs to another user.
     /// </summary>
     Task<ServiceResult> CancelAsync(int reservationId, int userId);
+
+    /// <summary>The user's unexpired holds across all events, soonest to expire first.</summary>
+    Task<IReadOnlyList<ReservationDto>> GetActiveAsync(int userId);
 }
 
 public class ReservationService : IReservationService
@@ -161,5 +164,20 @@ public class ReservationService : IReservationService
         await _db.SaveChangesAsync();
 
         return ServiceResult.Ok();
+    }
+
+    public async Task<IReadOnlyList<ReservationDto>> GetActiveAsync(int userId)
+    {
+        var now = DateTime.UtcNow;
+        var reservations = await _db.Reservations.AsNoTracking()
+            .Where(r => r.UserId == userId && r.ExpiresAt > now)
+            .OrderBy(r => r.ExpiresAt)
+            .Select(r => new ReservationDto(r.Id, r.EventId, r.SeatId, r.Seat.Row, r.Seat.Number, r.ExpiresAt))
+            .ToListAsync();
+
+        // SQLite doesn't store DateTimeKind; times are saved as UTC, so mark them as such.
+        return reservations
+            .Select(r => r with { ExpiresAt = DateTime.SpecifyKind(r.ExpiresAt, DateTimeKind.Utc) })
+            .ToList();
     }
 }
