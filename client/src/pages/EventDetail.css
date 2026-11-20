@@ -1,0 +1,27 @@
+.selection-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.selection-total {
+  border-top: 1px solid var(--royal);
+}
+
+/* Hold countdown: neutral pill, Light Ruby in the last minute (Ink Purple text on ruby). */
+.hold-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--plum-raised);
+  color: var(--off-white);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.hold-timer--urgent {
+  background: var(--ruby);
+  color: var(--ink);
+}

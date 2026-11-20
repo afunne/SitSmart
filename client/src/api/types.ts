@@ -1,9 +1,9 @@
 // TypeScript types for the API DTOs. ASP.NET serializes properties in camelCase and
 // DateTime values as ISO 8601 strings (UTC values end in "Z"), so dates are typed as string.
 //
-// Auth, halls, events, seats and reservations match Piletimyyk.Api/Dtos. Tickets and
-// statistics don't exist in the backend yet; they are based on the EF models in
-// Piletimyyk.Api/Models and must be kept in sync once those endpoints are written.
+// Auth, halls, events, seats, reservations and tickets match Piletimyyk.Api/Dtos. Statistics
+// don't exist in the backend yet; they are based on the EF models in Piletimyyk.Api/Models
+// and must be kept in sync once that endpoint is written.
 
 export type Role = 'Admin' | 'Buyer' | 'Controller' | 'Service'
 
@@ -113,18 +113,18 @@ export interface ReservationDto {
   expiresAt: IsoDateTime
 }
 
-// ---- Tickets (provisional) ----
+// ---- Tickets (Dtos/TicketDto.cs) ----
 
+/** Returned by POST /api/reservations/{id}/purchase and GET /api/tickets/my. usedAt: null until scanned. */
 export interface TicketDto {
   id: number
   code: string
-  eventId: number
   eventName: string
-  startTime: IsoDateTime
+  startsAt: IsoDateTime
   hallName: string
-  seatId: number
   row: number
   number: number
+  price: number
   purchasedAt: IsoDateTime
   usedAt: IsoDateTime | null
 }

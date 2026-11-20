@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Box,
   Button,
+  Callout,
   Card,
   Container,
   Flex,
@@ -22,16 +23,28 @@ import type {
   SeatDto,
   SeatMapDto,
   SeatState,
+  TicketDto,
 } from '../api/types.ts'
 import { useAuth } from '../auth/AuthContext.tsx'
 import ErrorCallout from '../components/ErrorCallout.tsx'
 import SeatMap from '../components/SeatMap.tsx'
 import { formatDateTime, formatPrice, formatTime, rowLabel } from '../utils/format.ts'
+import './EventDetail.css'
 
 /** Same as ReservationService.MaxActiveReservationsPerUser in the API (counted across all events). */
 const MAX_ACTIVE_RESERVATIONS = 6
 
 const SEAT_TAKEN = 'Koht on juba võetud - vali mõni teine'
+
+/** How long "Pilet ostetud!" stays visible before going to /my-tickets. */
+const PURCHASED_NOTICE_MS = 1500
+
+/** 272_000 → "04:32". Rounds up, so the display reaches 00:00 exactly when the hold expires. */
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.ceil(ms / 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(totalSeconds / 60))}:${pad(totalSeconds % 60)}`
+}
 
 interface EventData {
   /** Which event this is, so data from the previous /events/:id isn't shown for a new one. */
@@ -120,11 +133,76 @@ export default function EventDetail() {
   }, [isBuyer])
 
   /** Brings seats and holds back in line with the server. */
-  const resync = async () => {
+  const resync = useCallback(async () => {
     try {
       await Promise.all([reloadSeats(), loadReservations()])
     } catch (err) {
       setMessage(getErrorMessage(err))
+    }
+  }, [reloadSeats, loadReservations])
+
+  const selected = isBuyer ? reservations.filter((r) => r.eventId === eventId).sort(bySeat) : []
+
+  // ---- Hold countdown: to the earliest expiresAt among this event's selected seats ----
+
+  const earliestExpiry = selected.length > 0 ? Math.min(...selected.map((r) => Date.parse(r.expiresAt))) : null
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (earliestExpiry === null) return
+    const tick = () => {
+      const current = Date.now()
+      setNow(current)
+      // At 0: drop the expired holds and reload. Seats held later stay selected (the server
+      // still holds them), and the countdown moves on to the next one. If the server's clock
+      // is a bit behind and still returns the hold, the next tick simply tries again.
+      if (current >= earliestExpiry) {
+        setReservations((prev) => prev.filter((r) => Date.parse(r.expiresAt) > current))
+        setMessage('Broneeringu aeg sai läbi ja kohad vabastati. Vali kohad uuesti.')
+        void resync()
+      }
+    }
+    tick() // `now` may be stale if no countdown was running
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
+  }, [earliestExpiry, resync])
+
+  const remainingMs = earliestExpiry === null ? null : Math.max(0, earliestExpiry - now)
+
+  // ---- Purchase ----
+
+  const [purchasing, setPurchasing] = useState(false)
+  /** Success notice; set means we're about to go to /my-tickets. */
+  const [purchased, setPurchased] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!purchased) return
+    const timer = window.setTimeout(() => navigate('/my-tickets'), PURCHASED_NOTICE_MS)
+    return () => window.clearTimeout(timer)
+  }, [purchased, navigate])
+
+  /** Buys the selected seats one by one; stops at the first failure. */
+  const purchase = async () => {
+    if (purchasing || selected.length === 0) return
+    setPurchasing(true)
+    setMessage(null)
+    let bought = 0
+    try {
+      for (const reservation of selected) {
+        await apiFetch<TicketDto>(`/api/reservations/${reservation.id}/purchase`, { method: 'POST' })
+        bought++
+        updateSeat(reservation.seatId, 'Sold')
+        setReservations((prev) => prev.filter((r) => r.id !== reservation.id))
+      }
+      setPurchased(bought === 1 ? 'Pilet ostetud!' : 'Piletid ostetud!')
+    } catch (err) {
+      const reason = getErrorMessage(err)
+      setMessage(bought > 0
+        ? `${reason} ${bought} piletit jõuti osta, need on lehel „Minu piletid”.`
+        : reason)
+      await resync()
+    } finally {
+      setPurchasing(false)
     }
   }
 
@@ -190,11 +268,10 @@ export default function EventDetail() {
       goToLogin()
       return
     }
+    if (purchasing || purchased) return
     if (seat.state === 'Free') void withPending(seat.seatId, () => reserve(seat))
     else if (seat.state === 'Mine') void withPending(seat.seatId, () => cancel(seat.seatId))
   }
-
-  const selected = isBuyer ? reservations.filter((r) => r.eventId === eventId).sort(bySeat) : []
 
   return (
     <Container size="4" px="4">
@@ -248,7 +325,26 @@ export default function EventDetail() {
               <Card size="3" asChild>
                 <aside aria-labelledby="selection-heading">
                   <Heading as="h3" size="5" mb="3" id="selection-heading">Sinu valik</Heading>
-                  {!isBuyer ? (
+                  {purchased && (
+                    <Callout.Root color="green" role="status" mb="3">
+                      <Callout.Icon><i className="ti ti-circle-check" aria-hidden="true" /></Callout.Icon>
+                      <Callout.Text>{purchased}</Callout.Text>
+                    </Callout.Root>
+                  )}
+                  {remainingMs !== null && (
+                    <Flex align="center" justify="between" gap="2" mb="3">
+                      <Text size="2" id="hold-timer-label">Aega jäänud</Text>
+                      <span
+                        role="timer"
+                        aria-labelledby="hold-timer-label"
+                        className={remainingMs <= 60_000 ? 'hold-timer hold-timer--urgent' : 'hold-timer'}
+                      >
+                        <i className="ti ti-clock" aria-hidden="true" />
+                        {formatCountdown(remainingMs)}
+                      </span>
+                    </Flex>
+                  )}
+                  {purchased ? null : !isBuyer ? (
                     <>
                       <Text as="p" size="2" color="gray" mb="3">Kohtade valimiseks logi sisse.</Text>
                       <Button onClick={goToLogin}>Logi sisse</Button>
@@ -258,7 +354,7 @@ export default function EventDetail() {
                   ) : (
                     <>
                       <Flex asChild direction="column" gap="2" mb="3">
-                        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                        <ul className="selection-list">
                           {selected.map((r) => (
                             <li key={r.id}>
                               <Flex align="center" justify="between" gap="2">
@@ -273,6 +369,7 @@ export default function EventDetail() {
                                 <IconButton
                                   variant="ghost"
                                   color="gray"
+                                  disabled={purchasing}
                                   aria-label={`Tühista rida ${rowLabel(r.row)}, koht ${r.number}`}
                                   onClick={() => void withPending(r.seatId, () => cancel(r.seatId))}
                                 >
@@ -283,10 +380,13 @@ export default function EventDetail() {
                           ))}
                         </ul>
                       </Flex>
-                      <Flex justify="between" pt="3" style={{ borderTop: '1px solid var(--royal)' }}>
+                      <Flex justify="between" pt="3" mb="4" className="selection-total">
                         <Text weight="medium">Kokku</Text>
                         <Text weight="medium" className="tabular">{formatPrice(selected.length * data.event.price)}</Text>
                       </Flex>
+                      <Button size="3" style={{ width: '100%' }} loading={purchasing} onClick={() => void purchase()}>
+                        Osta
+                      </Button>
                     </>
                   )}
                 </aside>
