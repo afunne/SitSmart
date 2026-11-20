@@ -1,0 +1,145 @@
+/* Seat map. Colors come only from theme.css. */
+
+.seatmap {
+  --seat-size: 48px;
+  --seat-gap: 4px;
+
+  color: var(--off-white);
+}
+
+@media (max-width: 767px) {
+  .seatmap {
+    --seat-size: 32px;
+    --seat-gap: 2px;
+  }
+}
+
+/* Wide halls (up to 50 seats per row) scroll sideways instead of squashing the seats. */
+.seatmap-scroll {
+  overflow-x: auto;
+  padding-block: 8px; /* room for the focus outline and the pulse */
+}
+
+/* max-content + auto margins: centered when it fits, starts at the left edge when it scrolls. */
+.seatmap-hall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--seat-gap);
+  width: max-content;
+  margin-inline: auto;
+  padding-inline: 8px;
+}
+
+.seatmap-row {
+  display: flex;
+  align-items: center;
+  gap: var(--seat-gap);
+}
+
+.seatmap-row-label {
+  width: 2.5ch;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--border-strong);
+  user-select: none;
+}
+
+.seat {
+  display: block;
+  flex: none;
+  width: var(--seat-size);
+  height: var(--seat-size);
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.seat img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.seat:hover:not(:disabled),
+.seat:focus-visible {
+  outline: 2px solid var(--ruby);
+  outline-offset: 2px;
+}
+
+/* Taken seats keep their full picture (the cat / popcorn is the information), just not clickable. */
+.seat:disabled {
+  cursor: default;
+}
+
+.seat--empty {
+  cursor: default;
+}
+
+.seat--changed {
+  animation: seat-pulse 600ms ease-out 3;
+}
+
+@keyframes seat-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--ruby);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat--changed {
+    animation: none;
+  }
+}
+
+/* The seats alone decide the hall's width: inline-size containment keeps the 480px stage
+   from widening it. The stage then shrinks to fit a narrow hall (e.g. on a phone). */
+.seatmap-stage {
+  contain: inline-size;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.seatmap-stage img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.seatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 24px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+.seatmap-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.seatmap-legend img {
+  image-rendering: pixelated;
+}

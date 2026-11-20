@@ -15,8 +15,78 @@ import {
   Text,
   TextField,
 } from '@radix-ui/themes'
+import { useState } from 'react'
+import type { SeatDto, SeatState } from '../api/types.ts'
+import SeatMap from '../components/SeatMap.tsx'
 
 const Icon = ({ name }: { name: string }) => <i className={`ti ti-${name}`} aria-hidden="true" />
+
+const DEMO_ROWS = 6
+const DEMO_SEATS_PER_ROW = 10
+
+/** Fake hall: a few sold and held seats, and one of "mine". */
+function demoSeats(): SeatDto[] {
+  const taken: Record<string, SeatState> = {
+    '1-4': 'Sold', '1-5': 'Sold', '1-6': 'Sold',
+    '2-2': 'Reserved', '2-7': 'Mine',
+    '3-1': 'Sold', '3-9': 'Sold', '3-10': 'Sold',
+    '4-5': 'Reserved', '4-6': 'Reserved',
+    '5-3': 'Sold', '5-8': 'Sold',
+    '6-4': 'Sold', '6-5': 'Sold', '6-6': 'Sold', '6-7': 'Sold',
+  }
+  const seats: SeatDto[] = []
+  for (let row = 1; row <= DEMO_ROWS; row++) {
+    for (let number = 1; number <= DEMO_SEATS_PER_ROW; number++) {
+      seats.push({
+        seatId: (row - 1) * DEMO_SEATS_PER_ROW + number,
+        row,
+        number,
+        state: taken[`${row}-${number}`] ?? 'Free',
+      })
+    }
+  }
+  return seats
+}
+
+function SeatMapDemo() {
+  const [seats, setSeats] = useState(demoSeats)
+  const [changed, setChanged] = useState<Set<number>>(new Set())
+
+  const setState = (seatId: number, state: SeatState) =>
+    setSeats((current) => current.map((s) => (s.seatId === seatId ? { ...s, state } : s)))
+
+  // Clicking toggles a seat between free and "mine", like choosing seats would.
+  const handleSeatClick = (seat: SeatDto) => setState(seat.seatId, seat.state === 'Mine' ? 'Free' : 'Mine')
+
+  // Pretend another buyer just held a random free seat, as a live update would.
+  const simulateOtherBuyer = () => {
+    const free = seats.filter((s) => s.state === 'Free')
+    if (free.length === 0) return
+    const seat = free[Math.floor(Math.random() * free.length)]
+    setState(seat.seatId, 'Reserved')
+    setChanged(new Set([seat.seatId]))
+  }
+
+  return (
+    <>
+      <SeatMap
+        rows={DEMO_ROWS}
+        seatsPerRow={DEMO_SEATS_PER_ROW}
+        seats={seats}
+        onSeatClick={handleSeatClick}
+        changedSeatIds={changed}
+      />
+      <Flex justify="center" gap="3" mt="4">
+        <Button variant="outline" color="gray" highContrast onClick={simulateOtherBuyer}>
+          Simulate another buyer
+        </Button>
+        <Button variant="outline" color="gray" highContrast onClick={() => { setSeats(demoSeats()); setChanged(new Set()) }}>
+          Reset
+        </Button>
+      </Flex>
+    </>
+  )
+}
 
 export default function Styleguide() {
   return (
@@ -124,6 +194,14 @@ export default function Styleguide() {
           </Table.Row>
         </Table.Body>
       </Table.Root>
+
+      <Heading as="h2" size="6" mb="3">Seat map</Heading>
+      <Text as="p" size="2" color="gray" mb="3">
+        Fake data. Click a free seat to select it; "Simulate another buyer" holds a random seat with the pulse.
+      </Text>
+      <Box mb="6">
+        <SeatMapDemo />
+      </Box>
 
       <Heading as="h2" size="6" mb="3">Notices</Heading>
       <Text as="p" size="2" color="gray" mb="3">

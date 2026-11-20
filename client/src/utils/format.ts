@@ -13,6 +13,15 @@ export function formatPrice(price: number): string {
   return priceFormat.format(price)
 }
 
+/** Row number as shown in the hall: 1 → "A", 26 → "Z", 27 → "AA" (halls have up to 50 rows). */
+export function rowLabel(row: number): string {
+  let label = ''
+  for (let n = row; n > 0; n = Math.floor((n - 1) / 26)) {
+    label = String.fromCharCode(65 + ((n - 1) % 26)) + label
+  }
+  return label
+}
+
 const pad = (value: number) => String(value).padStart(2, '0')
 
 /** UTC ISO string → "YYYY-MM-DDTHH:mm" in local time, the value format of datetime-local inputs. */
