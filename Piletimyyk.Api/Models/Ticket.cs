@@ -7,6 +7,10 @@ public class Ticket
     public int EventId { get; set; }
     public int SeatId { get; set; }
     public int UserId { get; set; }
+
+    /// <summary>Event price at purchase time; later price changes don't affect sold tickets.</summary>
+    public decimal Price { get; set; }
+
     public DateTime PurchasedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UsedAt { get; set; }
 

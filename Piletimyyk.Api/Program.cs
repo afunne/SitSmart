@@ -72,6 +72,7 @@ builder.Services.AddScoped<IHallService, HallService>();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<ISeatService, SeatService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddSingleton<ITicketCodeGenerator, TicketCodeGenerator>();
 
 builder.Services.AddEndpointsApiExplorer();

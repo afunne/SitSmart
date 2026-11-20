@@ -116,6 +116,10 @@ public class AppDbContext : DbContext
             ticket.HasIndex(t => t.Code)
                 .IsUnique();
 
+            ticket.Property(t => t.Price)
+                .IsRequired()
+                .HasColumnType("decimal(10,2)");
+
             ticket.HasIndex(t => new { t.EventId, t.SeatId })
                 .IsUnique();
 

@@ -139,6 +139,9 @@ namespace Piletimyyk.Api.Migrations
                     b.Property<int>("EventId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<DateTime>("PurchasedAt")
                         .HasColumnType("TEXT");
 
