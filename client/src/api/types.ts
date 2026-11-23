@@ -129,6 +129,22 @@ export interface TicketDto {
   usedAt: IsoDateTime | null
 }
 
+// ---- Check-in (Dtos/CheckInResultDto.cs) ----
+
+/** 200 from POST /api/tickets/{code}/check-in. usedAt: the moment it was just checked in. */
+export interface CheckInResultDto {
+  code: string
+  eventName: string
+  row: number
+  number: number
+  usedAt: IsoDateTime
+}
+
+/** Extra field in the 409 ProblemDetails of check-in: when the ticket was first used. */
+export interface CheckInConflict {
+  usedAt?: IsoDateTime
+}
+
 // ---- Admin statistics (provisional) ----
 
 export interface EventStatsDto {

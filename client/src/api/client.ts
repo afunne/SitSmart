@@ -2,11 +2,14 @@ import { clearSession, getSession } from '../auth/session.ts'
 
 export class ApiError extends Error {
   readonly status: number
+  /** Parsed JSON error body (usually ProblemDetails, possibly with extra fields), if there was one. */
+  readonly body: unknown
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, body?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.body = body
   }
 }
 
@@ -63,26 +66,30 @@ async function send(path: string, options: ApiFetchOptions, accept: string): Pro
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, await readErrorMessage(response))
+    const { message, body } = await readError(response)
+    throw new ApiError(response.status, message, body)
   }
 
   return response
 }
 
-/** Uses ASP.NET ProblemDetails (detail / title) when present, otherwise a generic message. */
-async function readErrorMessage(response: Response): Promise<string> {
+/**
+ * Message from ASP.NET ProblemDetails (detail / title) when present, otherwise a generic one;
+ * plus the parsed body, for endpoints that add their own fields to it.
+ */
+async function readError(response: Response): Promise<{ message: string; body?: unknown }> {
   const fallback = `Päring ebaõnnestus (${response.status})`
   try {
     const text = await response.text()
-    if (!text) return fallback
+    if (!text) return { message: fallback }
     try {
       const problem = JSON.parse(text) as { detail?: string; title?: string; message?: string }
-      return problem.detail ?? problem.message ?? problem.title ?? fallback
+      return { message: problem.detail ?? problem.message ?? problem.title ?? fallback, body: problem }
     } catch {
-      return text
+      return { message: text }
     }
   } catch {
-    return fallback
+    return { message: fallback }
   }
 }
 

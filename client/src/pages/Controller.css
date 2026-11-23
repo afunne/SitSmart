@@ -1,0 +1,75 @@
+/* Big code field: easy to read and tap on a phone at the door. */
+.checkin-code {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkin-code input {
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.checkin-form {
+  margin-bottom: var(--space-3);
+}
+
+.checkin-scan-button {
+  width: 100%;
+  margin-bottom: var(--space-4);
+}
+
+.checkin-scanner {
+  width: 100%;
+  margin-bottom: var(--space-4);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.checkin-scanner video {
+  display: block;
+  width: 100% !important; /* html5-qrcode sets an inline pixel width */
+}
+
+/* Result: full-width colored panel. Ink text on all three backgrounds (≥ 4.5:1), and an icon
+   plus a word in each, so the result doesn't rely on color alone. */
+.checkin-result {
+  padding: var(--space-5);
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.checkin-result p {
+  margin: 0 0 var(--space-1);
+}
+
+.checkin-result-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-heading);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: var(--space-3) !important;
+}
+
+.checkin-result-code {
+  margin-top: var(--space-3) !important;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.checkin-result--allowed {
+  background: var(--success);
+}
+
+.checkin-result--used {
+  background: var(--error);
+}
+
+.checkin-result--unknown {
+  background: var(--seat-reserved);
+}

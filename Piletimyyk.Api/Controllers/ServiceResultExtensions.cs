@@ -55,7 +55,16 @@ public static class ServiceResultExtensions
 
         // Also expose the message as "message", so clients can read either
         // { "detail": ... } (ProblemDetails) or { "message": ... }.
-        ((ProblemDetails)problem.Value!).Extensions["message"] = result.Error;
+        var extensions = ((ProblemDetails)problem.Value!).Extensions;
+        extensions["message"] = result.Error;
+
+        if (result.ErrorData is not null)
+        {
+            foreach (var (key, value) in result.ErrorData)
+            {
+                extensions[key] = value;
+            }
+        }
 
         return problem;
     }

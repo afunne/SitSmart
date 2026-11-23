@@ -8,7 +8,7 @@ public interface ICheckInService
 {
     /// <summary>
     /// Marks the ticket as used. NotFound: no such ticket. Conflict: it was already used
-    /// (the message includes when).
+    /// (the message includes when, and ErrorData["usedAt"] has the UTC time).
     /// </summary>
     Task<ServiceResult<CheckInResultDto>> CheckInAsync(string code);
 }
@@ -50,8 +50,10 @@ public class CheckInService : ICheckInService
             // UsedAt is never cleared, so 0 rows for an existing ticket means it was already used.
             // SQLite doesn't store DateTimeKind; the time was saved as UTC.
             var usedAt = DateTime.SpecifyKind(ticket.UsedAt!.Value, DateTimeKind.Utc);
+            // "usedAt" is also sent as its own field, for the client to show in local time.
             return ServiceResult<CheckInResultDto>.Conflict(
-                $"Pilet on juba kasutatud ({usedAt:yyyy-MM-dd HH:mm:ss} UTC).");
+                $"Pilet on juba kasutatud ({usedAt:yyyy-MM-dd HH:mm:ss} UTC).",
+                new Dictionary<string, object?> { ["usedAt"] = usedAt });
         }
 
         return ServiceResult<CheckInResultDto>.Ok(

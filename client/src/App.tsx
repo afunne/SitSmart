@@ -5,6 +5,7 @@ import RequireRole from './auth/RequireRole.tsx'
 import Layout from './components/Layout.tsx'
 import AdminEvents from './pages/admin/AdminEvents.tsx'
 import AdminHalls from './pages/admin/AdminHalls.tsx'
+import Controller from './pages/Controller.tsx'
 import EventDetail from './pages/EventDetail.tsx'
 import Events from './pages/Events.tsx'
 import Login from './pages/Login.tsx'
@@ -23,6 +24,14 @@ const router = createBrowserRouter([
         element: (
           <RequireRole roles={['Buyer']}>
             <MyTickets />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'controller',
+        element: (
+          <RequireRole roles={['Controller']}>
+            <Controller />
           </RequireRole>
         ),
       },
