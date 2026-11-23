@@ -6,7 +6,10 @@ using Piletimyyk.Api.Services;
 
 namespace Piletimyyk.Api.Controllers;
 
-/// <summary>Buyers see the tickets they have bought; owners and admins can get a ticket's QR code.</summary>
+/// <summary>
+/// Buyers see the tickets they have bought; owners and admins can get a ticket's QR code;
+/// controllers check tickets in at the door.
+/// </summary>
 [ApiController]
 [Route("api/tickets")]
 // Roles are set per action: a class-level role would also apply to every action and can't be
@@ -17,10 +20,12 @@ namespace Piletimyyk.Api.Controllers;
 public class TicketsController : ControllerBase
 {
     private readonly ITicketService _ticketService;
+    private readonly ICheckInService _checkInService;
 
-    public TicketsController(ITicketService ticketService)
+    public TicketsController(ITicketService ticketService, ICheckInService checkInService)
     {
         _ticketService = ticketService;
+        _checkInService = checkInService;
     }
 
     /// <summary>The caller's tickets: upcoming events first (soonest first), then past ones.</summary>
@@ -41,5 +46,16 @@ public class TicketsController : ControllerBase
     {
         var result = await _ticketService.GetQrPngAsync(code, User.GetRequiredUserId(), User.IsInRole(Roles.Admin));
         return this.ToFileResult(result, "image/png");
+    }
+
+    /// <summary>Marks the ticket as used. 409 if it was already used (the message says when).</summary>
+    [HttpPost("{code}/check-in")]
+    [Authorize(Roles = Roles.Controller)]
+    [ProducesResponseType(typeof(CheckInResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CheckInResultDto>> CheckIn(string code)
+    {
+        return this.ToActionResult(await _checkInService.CheckInAsync(code));
     }
 }
