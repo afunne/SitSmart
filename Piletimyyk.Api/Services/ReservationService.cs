@@ -22,6 +22,12 @@ public interface IReservationService
 
     /// <summary>The user's unexpired holds across all events, soonest to expire first.</summary>
     Task<IReadOnlyList<ReservationDto>> GetActiveAsync(int userId);
+
+    /// <summary>
+    /// Deletes all expired holds (ExpiresAt &lt;= now) and returns the seats they freed.
+    /// Run periodically by the worker.
+    /// </summary>
+    Task<ReleaseExpiredResponse> ReleaseExpiredAsync();
 }
 
 public class ReservationService : IReservationService
@@ -179,5 +185,42 @@ public class ReservationService : IReservationService
         return reservations
             .Select(r => r with { ExpiresAt = DateTime.SpecifyKind(r.ExpiresAt, DateTimeKind.Utc) })
             .ToList();
+    }
+
+    public async Task<ReleaseExpiredResponse> ReleaseExpiredAsync()
+    {
+        // BEGIN IMMEDIATE on SQLite (see ReserveAsync): nothing else can delete one of these
+        // rows between the query and SaveChanges. Without it, a buyer cancelling an expired hold,
+        // or ReserveAsync clearing one for the same seat, could do so in between, and
+        // SaveChanges would fail with a concurrency error (0 rows deleted where 1 was expected).
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
+        var now = DateTime.UtcNow;
+        var expired = await _db.Reservations
+            .Include(r => r.Seat)
+            .Where(r => r.ExpiresAt <= now)
+            .ToListAsync();
+
+        if (expired.Count == 0)
+        {
+            return new ReleaseExpiredResponse(0, []);
+        }
+
+        // The seats are free now: an expired hold can't be bought (PurchaseService rejects it),
+        // and the unique index on (EventId, SeatId) means no newer hold exists for the seat
+        // while this row is still there.
+        var seats = expired
+            .Select(r => new ReleasedSeatDto(r.EventId, r.SeatId, r.Seat.Row, r.Seat.Number))
+            .OrderBy(s => s.EventId).ThenBy(s => s.Row).ThenBy(s => s.Number)
+            .ToList();
+
+        _db.Reservations.RemoveRange(expired);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        // TODO: notify clients over WebSocket that these seats are free again, so open seat
+        // maps update without a reload. (Added in a later step.)
+
+        return new ReleaseExpiredResponse(seats.Count, seats);
     }
 }
