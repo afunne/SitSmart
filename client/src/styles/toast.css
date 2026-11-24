@@ -1,0 +1,36 @@
+/*
+ * Sonner toasts in the SitSmart palette (theme.css). Plum surface with Off White text; success
+ * and error get a colored border and icon (status colors as text on a dark background, rule 4
+ * in docs/design.md). The extra `html` beats sonner's own styles, which it injects at runtime.
+ */
+
+html [data-sonner-toaster][data-sonner-theme='dark'] {
+  --normal-bg: var(--plum);
+  --normal-bg-hover: var(--plum-raised);
+  --normal-border: var(--border-strong);
+  --normal-border-hover: var(--border-strong);
+  --normal-text: var(--off-white);
+  --border-radius: 12px;
+  font-family: var(--font-body);
+}
+
+html [data-sonner-toast][data-styled='true'] {
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+html [data-sonner-toast][data-type='success'] {
+  border-color: var(--success);
+}
+
+html [data-sonner-toast][data-type='success'] [data-icon] {
+  color: var(--success);
+}
+
+html [data-sonner-toast][data-type='error'] {
+  border-color: var(--error);
+}
+
+html [data-sonner-toast][data-type='error'] [data-icon] {
+  color: var(--error);
+}

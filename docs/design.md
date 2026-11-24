@@ -84,10 +84,12 @@ Tabler Icons webfont 3.51.0 from jsDelivr (linked in `client/index.html`), e.g.
 | Status badge | `<Badge color="green" variant="solid">` (+ icon) |
 | Neutral badge | `<Badge color="gray">` |
 | Table | `<Table.Root variant="surface">` |
-| Inline notice | `<Callout.Root color="...">` |
+| Inline notice | `<Callout.Root color="...">` (a page that failed to load) |
+| Toast | `toast.success()` / `toast.error()` from `sonner` (result of an action) |
 | Layout | `<Container>`, `<Flex>`, `<Grid>`, `<Section>` |
 
-Radix Themes has no toast component. If we need toasts, use `@radix-ui/react-toast`.
+Radix Themes has no toast component, so toasts use `sonner`: one `<Toaster />` in `main.tsx`, colored
+in `styles/toast.css`. Error texts come from `src/api/errorMessage.ts`.
 
 ## Rules
 

@@ -14,7 +14,9 @@ import {
   TextField,
   Tooltip,
 } from '@radix-ui/themes'
-import { apiFetch, getErrorMessage } from '../../api/client.ts'
+import { toast } from 'sonner'
+import { apiFetch } from '../../api/client.ts'
+import { errorMessage } from '../../api/errorMessage.ts'
 import type { CreateHallRequest, HallDto, UpdateHallRequest } from '../../api/types.ts'
 import ErrorCallout from '../../components/ErrorCallout.tsx'
 
@@ -23,26 +25,21 @@ const MAX_NAME_LENGTH = 100
 const MAX_ROWS = 50
 const MAX_SEATS_PER_ROW = 50
 
-type ErrorHandler = (message: string | null) => void
-
 const byName = (a: HallDto, b: HallDto) => a.name.localeCompare(b.name, 'et')
 
 export default function AdminHalls() {
   const [halls, setHalls] = useState<HallDto[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  /** Error from renaming or deleting, shown above the table. */
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     apiFetch<HallDto[]>('/api/halls')
       .then(data => { if (!cancelled) setHalls(data) })
-      .catch(err => { if (!cancelled) setLoadError(getErrorMessage(err)) })
+      .catch(err => { if (!cancelled) setLoadError(errorMessage(err)) })
     return () => { cancelled = true }
   }, [])
 
   const handleCreated = (hall: HallDto) => {
-    setError(null)
     setHalls(prev => [...(prev ?? []), hall].sort(byName))
   }
 
@@ -61,8 +58,6 @@ export default function AdminHalls() {
           <Heading as="h1" size="8">Saalid</Heading>
           <CreateHallDialog onCreated={handleCreated} />
         </Flex>
-
-        {error && <ErrorCallout message={error} />}
 
         {loadError ? (
           <ErrorCallout message={loadError} />
@@ -92,7 +87,6 @@ export default function AdminHalls() {
                   hall={hall}
                   onRenamed={handleRenamed}
                   onDeleted={handleDeleted}
-                  onError={setError}
                 />
               ))}
             </Table.Body>
@@ -107,17 +101,15 @@ interface HallRowProps {
   hall: HallDto
   onRenamed: (hall: HallDto) => void
   onDeleted: (id: number) => void
-  onError: ErrorHandler
 }
 
 /** One table row; the name turns into a text field while renaming. */
-function HallRow({ hall, onRenamed, onDeleted, onError }: HallRowProps) {
+function HallRow({ hall, onRenamed, onDeleted }: HallRowProps) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(hall.name)
   const [saving, setSaving] = useState(false)
 
   const startEditing = () => {
-    onError(null)
     setName(hall.name)
     setEditing(true)
   }
@@ -130,14 +122,14 @@ function HallRow({ hall, onRenamed, onDeleted, onError }: HallRowProps) {
       return
     }
 
-    onError(null)
     setSaving(true)
     try {
       const body: UpdateHallRequest = { name: trimmed }
       onRenamed(await apiFetch<HallDto>(`/api/halls/${hall.id}`, { method: 'PUT', body }))
       setEditing(false)
+      toast.success('Saal ümber nimetatud')
     } catch (err) {
-      onError(getErrorMessage(err))
+      toast.error(errorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -199,7 +191,7 @@ function HallRow({ hall, onRenamed, onDeleted, onError }: HallRowProps) {
               <i className="ti ti-pencil" aria-hidden="true" />
             </IconButton>
           </Tooltip>
-          <DeleteHallDialog hall={hall} onDeleted={onDeleted} onError={onError} />
+          <DeleteHallDialog hall={hall} onDeleted={onDeleted} />
         </Flex>
       </Table.Cell>
     </Table.Row>
@@ -209,24 +201,23 @@ function HallRow({ hall, onRenamed, onDeleted, onError }: HallRowProps) {
 interface DeleteHallDialogProps {
   hall: HallDto
   onDeleted: (id: number) => void
-  onError: ErrorHandler
 }
 
-/** Trash button + confirmation. A 409 (hall has events) is shown above the table. */
-function DeleteHallDialog({ hall, onDeleted, onError }: DeleteHallDialogProps) {
+/** Trash button + confirmation. A 409 (hall has events) is shown as a toast with the API's message. */
+function DeleteHallDialog({ hall, onDeleted }: DeleteHallDialogProps) {
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
-    onError(null)
     setDeleting(true)
     try {
       await apiFetch<void>(`/api/halls/${hall.id}`, { method: 'DELETE' })
       setOpen(false)
       onDeleted(hall.id)
+      toast.success('Saal kustutatud')
     } catch (err) {
       setOpen(false)
-      onError(getErrorMessage(err))
+      toast.error(errorMessage(err))
     } finally {
       setDeleting(false)
     }
@@ -260,13 +251,12 @@ function DeleteHallDialog({ hall, onDeleted, onError }: DeleteHallDialogProps) {
   )
 }
 
-/** "Lisa saal" button + form dialog. Validation errors (400) are shown inside the dialog. */
+/** "Lisa saal" button + form dialog. Errors are shown as toasts; the dialog stays open. */
 function CreateHallDialog({ onCreated }: { onCreated: (hall: HallDto) => void }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [rows, setRows] = useState('')
   const [seatsPerRow, setSeatsPerRow] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const total = Number(rows) * Number(seatsPerRow)
@@ -277,14 +267,12 @@ function CreateHallDialog({ onCreated }: { onCreated: (hall: HallDto) => void })
       setName('')
       setRows('')
       setSeatsPerRow('')
-      setError(null)
     }
     setOpen(next)
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError(null)
     setSaving(true)
     try {
       const body: CreateHallRequest = {
@@ -294,8 +282,9 @@ function CreateHallDialog({ onCreated }: { onCreated: (hall: HallDto) => void })
       }
       onCreated(await apiFetch<HallDto>('/api/halls', { method: 'POST', body }))
       setOpen(false)
+      toast.success('Saal lisatud')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.error(errorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -314,8 +303,6 @@ function CreateHallDialog({ onCreated }: { onCreated: (hall: HallDto) => void })
         <Dialog.Description size="2" mb="4" color="gray">
           Kohad luuakse automaatselt ridade ja kohtade arvu järgi. Hiljem saab muuta ainult nime.
         </Dialog.Description>
-
-        {error && <ErrorCallout message={error} />}
 
         <form onSubmit={handleSubmit}>
           <Flex direction="column" gap="4">

@@ -19,7 +19,9 @@ import {
   Tooltip,
 } from '@radix-ui/themes'
 import { Link as RouterLink } from 'react-router'
-import { apiFetch, getErrorMessage } from '../../api/client.ts'
+import { toast } from 'sonner'
+import { apiFetch } from '../../api/client.ts'
+import { errorMessage } from '../../api/errorMessage.ts'
 import type { CreateEventRequest, EventDto, HallDto } from '../../api/types.ts'
 import ErrorCallout from '../../components/ErrorCallout.tsx'
 import { formatDateTime, formatPrice, fromDateTimeLocal, toDateTimeLocal } from '../../utils/format.ts'
@@ -38,8 +40,6 @@ export default function AdminEvents() {
   const [loadedAt, setLoadedAt] = useState(0)
   const [halls, setHalls] = useState<HallDto[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
-  /** Error from deleting, shown above the table. */
-  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(null)
 
   // The API decides the order (upcoming first), so reload the list after every change.
@@ -57,7 +57,7 @@ export default function AdminEvents() {
         setLoadedAt(Date.now())
         setHalls(hallData)
       })
-      .catch(err => { if (!cancelled) setLoadError(getErrorMessage(err)) })
+      .catch(err => { if (!cancelled) setLoadError(errorMessage(err)) })
     return () => { cancelled = true }
   }, [])
 
@@ -66,7 +66,7 @@ export default function AdminEvents() {
     try {
       await loadEvents()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.error(errorMessage(err))
     }
   }
 
@@ -74,22 +74,15 @@ export default function AdminEvents() {
     setEvents(prev => (prev ?? []).filter(e => e.id !== id))
   }
 
-  const openForm = (event: EventDto | null) => {
-    setError(null)
-    setForm({ event })
-  }
-
   return (
     <Container size="4" px="4">
       <Section size="2">
         <Flex align="center" justify="between" gap="3" wrap="wrap" mb="5">
           <Heading as="h1" size="8">Üritused</Heading>
-          <Button disabled={events === null} onClick={() => openForm(null)}>
+          <Button disabled={events === null} onClick={() => setForm({ event: null })}>
             <i className="ti ti-plus" aria-hidden="true" /> Lisa üritus
           </Button>
         </Flex>
-
-        {error && <ErrorCallout message={error} />}
 
         {loadError ? (
           <ErrorCallout message={loadError} />
@@ -118,9 +111,8 @@ export default function AdminEvents() {
                   key={event.id}
                   event={event}
                   isPast={Date.parse(event.startsAt) <= loadedAt}
-                  onEdit={() => openForm(event)}
+                  onEdit={() => setForm({ event })}
                   onDeleted={handleDeleted}
-                  onError={setError}
                 />
               ))}
             </Table.Body>
@@ -141,10 +133,9 @@ interface EventRowProps {
   isPast: boolean
   onEdit: () => void
   onDeleted: (id: number) => void
-  onError: (message: string | null) => void
 }
 
-function EventRow({ event, isPast, onEdit, onDeleted, onError }: EventRowProps) {
+function EventRow({ event, isPast, onEdit, onDeleted }: EventRowProps) {
   return (
     <Table.Row align="center">
       <Table.RowHeaderCell>
@@ -164,7 +155,7 @@ function EventRow({ event, isPast, onEdit, onDeleted, onError }: EventRowProps) 
               <i className="ti ti-pencil" aria-hidden="true" />
             </IconButton>
           </Tooltip>
-          <DeleteEventDialog event={event} onDeleted={onDeleted} onError={onError} />
+          <DeleteEventDialog event={event} onDeleted={onDeleted} />
         </Flex>
       </Table.Cell>
     </Table.Row>
@@ -174,24 +165,23 @@ function EventRow({ event, isPast, onEdit, onDeleted, onError }: EventRowProps) 
 interface DeleteEventDialogProps {
   event: EventDto
   onDeleted: (id: number) => void
-  onError: (message: string | null) => void
 }
 
-/** Trash button + confirmation. A 409 (tickets sold) is shown above the table. */
-function DeleteEventDialog({ event, onDeleted, onError }: DeleteEventDialogProps) {
+/** Trash button + confirmation. A 409 (tickets sold) is shown as a toast with the API's message. */
+function DeleteEventDialog({ event, onDeleted }: DeleteEventDialogProps) {
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
-    onError(null)
     setDeleting(true)
     try {
       await apiFetch<void>(`/api/events/${event.id}`, { method: 'DELETE' })
       setOpen(false)
       onDeleted(event.id)
+      toast.success('Üritus kustutatud')
     } catch (err) {
       setOpen(false)
-      onError(getErrorMessage(err))
+      toast.error(errorMessage(err))
     } finally {
       setDeleting(false)
     }
@@ -235,7 +225,7 @@ interface EventFormProps {
 
 /**
  * Dialog content with the add/edit form. It is mounted only while the dialog is open,
- * so the fields start from `event` every time. Errors (400/409) are shown in the dialog.
+ * so the fields start from `event` every time. Errors (400/409) are shown as toasts; the dialog stays open.
  */
 function EventForm({ event, halls, onSaved }: EventFormProps) {
   const isEdit = event !== null
@@ -247,7 +237,6 @@ function EventForm({ event, halls, onSaved }: EventFormProps) {
   const [startsAt, setStartsAt] = useState(initialStartsAt)
   const [hallId, setHallId] = useState(event ? String(event.hallId) : halls.length === 1 ? String(halls[0].id) : '')
   const [price, setPrice] = useState(event ? String(event.price) : '')
-  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // Browser-side hint only; the API checks the time as well.
   const [minStartsAt] = useState(() => toDateTimeLocal(new Date().toISOString()))
@@ -255,11 +244,10 @@ function EventForm({ event, halls, onSaved }: EventFormProps) {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!hallId) {
-      setError('Vali saal.')
+      toast.error('Vali saal.')
       return
     }
 
-    setError(null)
     setSaving(true)
     try {
       const body: CreateEventRequest = {
@@ -278,9 +266,10 @@ function EventForm({ event, halls, onSaved }: EventFormProps) {
         method: isEdit ? 'PUT' : 'POST',
         body,
       })
+      toast.success(isEdit ? 'Muudatused salvestatud' : 'Üritus lisatud')
       onSaved()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.error(errorMessage(err))
       setSaving(false)
     }
   }
@@ -300,8 +289,6 @@ function EventForm({ event, halls, onSaved }: EventFormProps) {
           ? 'Saali saab vahetada ainult siis, kui üritusele pole veel kohti müüdud ega broneeritud.'
           : 'Algusaeg peab olema tulevikus.'}
       </Dialog.Description>
-
-      {error && <ErrorCallout message={error} />}
 
       {halls.length === 0 ? (
         <Text as="p" size="2">

@@ -16,6 +16,7 @@ import {
   TextField,
 } from '@radix-ui/themes'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { SeatDto, SeatState } from '../api/types.ts'
 import SeatMap from '../components/SeatMap.tsx'
 
@@ -205,8 +206,14 @@ export default function Styleguide() {
 
       <Heading as="h2" size="6" mb="3">Notices</Heading>
       <Text as="p" size="2" color="gray" mb="3">
-        Radix Themes has no toast component; Callout covers inline notices.
+        Results of an action are toasts (sonner, styles/toast.css). Callout is for a page that failed to load.
       </Text>
+      <Flex gap="3" mb="3">
+        <Button variant="soft" onClick={() => toast.success('Pilet ostetud!')}>Success toast</Button>
+        <Button variant="soft" color="red" onClick={() => toast.error('Koht on juba võetud - vali mõni teine')}>
+          Error toast
+        </Button>
+      </Flex>
       <Flex direction="column" gap="3" mb="9">
         <Callout.Root color="green">
           <Callout.Icon><Icon name="circle-check" /></Callout.Icon>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Container, Flex, Grid, Heading, Section, Spinner, Text } from '@radix-ui/themes'
-import { apiFetch, getErrorMessage } from '../api/client.ts'
+import { apiFetch } from '../api/client.ts'
+import { errorMessage } from '../api/errorMessage.ts'
 import type { EventDto } from '../api/types.ts'
 import ErrorCallout from '../components/ErrorCallout.tsx'
 import EventCard from '../components/EventCard.tsx'
@@ -18,7 +19,7 @@ export default function Events() {
         const now = Date.now()
         setEvents(data.filter((e) => new Date(e.startsAt).getTime() > now))
       })
-      .catch((err) => { if (!cancelled) setError(getErrorMessage(err)) })
+      .catch((err) => { if (!cancelled) setError(errorMessage(err)) })
     return () => { cancelled = true }
   }, [])
 

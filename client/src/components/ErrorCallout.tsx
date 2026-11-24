@@ -1,6 +1,6 @@
 import { Callout } from '@radix-ui/themes'
 
-/** Red alert box for an error message, e.g. from getErrorMessage(). */
+/** Red alert box for an error message, e.g. a page that failed to load. */
 export default function ErrorCallout({ message }: { message: string }) {
   return (
     <Callout.Root color="red" role="alert" mb="4">

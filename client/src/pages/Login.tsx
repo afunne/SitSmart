@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Box, Button, Callout, Card, Container, Flex, Heading, Section, Text, TextField } from '@radix-ui/themes'
+import { Box, Button, Card, Container, Flex, Heading, Section, Text, TextField } from '@radix-ui/themes'
 import { useLocation, useNavigate } from 'react-router'
+import { toast } from 'sonner'
 import { ApiError } from '../api/client.ts'
+import { errorMessage } from '../api/errorMessage.ts'
 import type { Role } from '../api/types.ts'
 import { useAuth } from '../auth/AuthContext.tsx'
 
@@ -16,12 +18,10 @@ export default function Login() {
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError(null)
     setSubmitting(true)
 
     try {
@@ -30,13 +30,8 @@ export default function Login() {
       const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from
       navigate(from ? from.pathname + from.search : (homeByRole[user.role] ?? '/'), { replace: true })
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError('Vale e-post või parool')
-      } else if (err instanceof ApiError) {
-        setError('Sisselogimine ebaõnnestus. Proovi hiljem uuesti.')
-      } else {
-        setError('Serveriga ei saanud ühendust. Kontrolli internetiühendust ja proovi uuesti.')
-      }
+      // Login sends no token, so a 401 here means wrong credentials, not an expired session.
+      toast.error(err instanceof ApiError && err.status === 401 ? 'Vale e-post või parool' : errorMessage(err))
       setSubmitting(false)
     }
   }
@@ -46,13 +41,6 @@ export default function Login() {
       <Section size="2">
         <Card size="4">
           <Heading as="h1" size="7" mb="5">Logi sisse</Heading>
-
-          {error && (
-            <Callout.Root color="red" role="alert" mb="4">
-              <Callout.Icon><i className="ti ti-alert-circle" aria-hidden="true" /></Callout.Icon>
-              <Callout.Text>{error}</Callout.Text>
-            </Callout.Root>
-          )}
 
           <form onSubmit={handleSubmit}>
             <Flex direction="column" gap="4">

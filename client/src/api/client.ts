@@ -92,10 +92,3 @@ async function readError(response: Response): Promise<{ message: string; body?: 
     return { message: fallback }
   }
 }
-
-/** Message to show for a failed apiFetch: the server's (Estonian) message, or a network error text. */
-export function getErrorMessage(err: unknown): string {
-  return err instanceof ApiError
-    ? err.message
-    : 'Serveriga ei saanud ühendust. Kontrolli internetiühendust ja proovi uuesti.'
-}

@@ -1,8 +1,9 @@
 import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from 'react'
 import { Button, Container, Flex, Heading, Section, Text, TextField } from '@radix-ui/themes'
-import { ApiError, apiFetch, getErrorMessage } from '../api/client.ts'
+import { toast } from 'sonner'
+import { ApiError, apiFetch } from '../api/client.ts'
+import { errorMessage } from '../api/errorMessage.ts'
 import type { CheckInConflict, CheckInResultDto } from '../api/types.ts'
-import ErrorCallout from '../components/ErrorCallout.tsx'
 import { formatDateTime, rowLabel } from '../utils/format.ts'
 import './Controller.css'
 
@@ -21,9 +22,7 @@ export default function Controller() {
   const [code, setCode] = useState('')
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<CheckResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
-  const [scanError, setScanError] = useState<string | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   // Refs: read synchronously by check() and the scanner callback, between renders.
@@ -37,7 +36,6 @@ export default function Controller() {
 
     busyRef.current = true
     setChecking(true)
-    setError(null)
     try {
       const ticket = await apiFetch<CheckInResultDto>(
         `/api/tickets/${encodeURIComponent(normalized)}/check-in`,
@@ -51,7 +49,7 @@ export default function Controller() {
         setResult({ kind: 'unknown', code: normalized })
       } else {
         setResult(null)
-        setError(getErrorMessage(err))
+        toast.error(errorMessage(err))
       }
     } finally {
       busyRef.current = false
@@ -100,7 +98,7 @@ export default function Controller() {
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setScanError(cameraErrorMessage(err))
+        toast.error(cameraErrorMessage(err))
         setScanning(false)
       })
 
@@ -116,14 +114,13 @@ export default function Controller() {
   }, [scanning])
 
   const toggleScanning = () => {
-    setScanError(null)
     if (scanning) {
       setScanning(false)
       inputRef.current?.focus()
       return
     }
     if (!window.isSecureContext || !navigator.mediaDevices) {
-      setScanError('Kaamera töötab ainult turvalise (HTTPS) ühendusega lehel.')
+      toast.error('Kaamera töötab ainult turvalise (HTTPS) ühendusega lehel.')
       return
     }
     lastScanRef.current = null
@@ -177,10 +174,7 @@ export default function Controller() {
           {scanning ? 'Lõpeta skaneerimine' : 'Skaneeri'}
         </Button>
 
-        {scanError && <ErrorCallout message={scanError} />}
         {scanning && <div id={SCANNER_ID} className="checkin-scanner" />}
-
-        {error && <ErrorCallout message={error} />}
 
         {/* Always rendered, so screen readers announce each new result in it. */}
         <div role="status" aria-live="polite" aria-atomic="true">

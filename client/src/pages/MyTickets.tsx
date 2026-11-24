@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Badge, Box, Button, Card, Code, Container, Flex, Grid, Heading, Section, Spinner, Text } from '@radix-ui/themes'
 import { Link as RouterLink } from 'react-router'
-import { apiFetch, apiFetchBlob, getErrorMessage } from '../api/client.ts'
+import { apiFetch, apiFetchBlob } from '../api/client.ts'
+import { errorMessage } from '../api/errorMessage.ts'
 import type { TicketDto } from '../api/types.ts'
 import ErrorCallout from '../components/ErrorCallout.tsx'
 import { formatDateTime, rowLabel } from '../utils/format.ts'
@@ -85,7 +86,7 @@ export default function MyTickets() {
     let cancelled = false
     apiFetch<TicketDto[]>('/api/tickets/my')
       .then((data) => { if (!cancelled) setTickets(data) })
-      .catch((err) => { if (!cancelled) setError(getErrorMessage(err)) })
+      .catch((err) => { if (!cancelled) setError(errorMessage(err)) })
     return () => { cancelled = true }
   }, [])
 

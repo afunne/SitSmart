@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Box,
   Button,
-  Callout,
   Card,
   Container,
   Flex,
@@ -15,7 +14,9 @@ import {
   Text,
 } from '@radix-ui/themes'
 import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router'
-import { ApiError, apiFetch, getErrorMessage } from '../api/client.ts'
+import { toast } from 'sonner'
+import { ApiError, apiFetch } from '../api/client.ts'
+import { errorMessage } from '../api/errorMessage.ts'
 import type {
   CreateReservationRequest,
   EventDto,
@@ -35,9 +36,6 @@ import './EventDetail.css'
 const MAX_ACTIVE_RESERVATIONS = 6
 
 const SEAT_TAKEN = 'Koht on juba võetud - vali mõni teine'
-
-/** How long "Pilet ostetud!" stays visible before going to /my-tickets. */
-const PURCHASED_NOTICE_MS = 1500
 
 /** 272_000 → "04:32". Rounds up, so the display reaches 00:00 exactly when the hold expires. */
 function formatCountdown(ms: number): string {
@@ -67,7 +65,7 @@ function useEventData(eventId: number) {
       apiFetch<SeatMapDto>(`/api/events/${eventId}/seats`),
     ])
       .then(([event, seatMap]) => { if (!cancelled) setData({ eventId, event, seatMap }) })
-      .catch((err) => { if (!cancelled) setError({ eventId, message: getErrorMessage(err) }) })
+      .catch((err) => { if (!cancelled) setError({ eventId, message: errorMessage(err) }) })
     return () => { cancelled = true }
   }, [eventId, valid])
 
@@ -114,8 +112,6 @@ export default function EventDetail() {
 
   /** The buyer's active holds in all events; the limit counts all of them. */
   const [reservations, setReservations] = useState<ReservationDto[]>([])
-  /** Error or notice from the last seat click. */
-  const [message, setMessage] = useState<string | null>(null)
   /** Seats with a request in flight; a second click on them is ignored. */
   const pending = useRef(new Set<number>())
 
@@ -128,7 +124,7 @@ export default function EventDetail() {
     let cancelled = false
     apiFetch<ReservationDto[]>('/api/reservations/my')
       .then((list) => { if (!cancelled) setReservations(list) })
-      .catch((err) => { if (!cancelled) setMessage(getErrorMessage(err)) })
+      .catch((err) => { if (!cancelled) toast.error(errorMessage(err)) })
     return () => { cancelled = true }
   }, [isBuyer])
 
@@ -137,7 +133,7 @@ export default function EventDetail() {
     try {
       await Promise.all([reloadSeats(), loadReservations()])
     } catch (err) {
-      setMessage(getErrorMessage(err))
+      toast.error(errorMessage(err))
     }
   }, [reloadSeats, loadReservations])
 
@@ -158,7 +154,8 @@ export default function EventDetail() {
       // is a bit behind and still returns the hold, the next tick simply tries again.
       if (current >= earliestExpiry) {
         setReservations((prev) => prev.filter((r) => Date.parse(r.expiresAt) > current))
-        setMessage('Broneeringu aeg sai läbi ja kohad vabastati. Vali kohad uuesti.')
+        // Fixed id: if the server still returns the hold, the next tick updates this toast instead of adding one.
+        toast.error('Broneeringu aeg sai läbi ja kohad vabastati. Vali kohad uuesti.', { id: 'hold-expired' })
         void resync()
       }
     }
@@ -172,20 +169,11 @@ export default function EventDetail() {
   // ---- Purchase ----
 
   const [purchasing, setPurchasing] = useState(false)
-  /** Success notice; set means we're about to go to /my-tickets. */
-  const [purchased, setPurchased] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!purchased) return
-    const timer = window.setTimeout(() => navigate('/my-tickets'), PURCHASED_NOTICE_MS)
-    return () => window.clearTimeout(timer)
-  }, [purchased, navigate])
 
   /** Buys the selected seats one by one; stops at the first failure. */
   const purchase = async () => {
     if (purchasing || selected.length === 0) return
     setPurchasing(true)
-    setMessage(null)
     let bought = 0
     try {
       for (const reservation of selected) {
@@ -194,10 +182,12 @@ export default function EventDetail() {
         updateSeat(reservation.seatId, 'Sold')
         setReservations((prev) => prev.filter((r) => r.id !== reservation.id))
       }
-      setPurchased(bought === 1 ? 'Pilet ostetud!' : 'Piletid ostetud!')
+      // The toast stays up on /my-tickets, so there is no need to wait here.
+      toast.success(bought === 1 ? 'Pilet ostetud!' : 'Piletid ostetud!')
+      navigate('/my-tickets')
     } catch (err) {
-      const reason = getErrorMessage(err)
-      setMessage(bought > 0
+      const reason = errorMessage(err)
+      toast.error(bought > 0
         ? `${reason} ${bought} piletit jõuti osta, need on lehel „Minu piletid”.`
         : reason)
       await resync()
@@ -208,7 +198,9 @@ export default function EventDetail() {
 
   const reserve = async (seat: SeatDto) => {
     if (reservations.length >= MAX_ACTIVE_RESERVATIONS) {
-      setMessage(`Korraga saab broneerida kuni ${MAX_ACTIVE_RESERVATIONS} kohta. Osta või tühista olemasolevad broneeringud.`)
+      toast.error(`Korraga saab broneerida kuni ${MAX_ACTIVE_RESERVATIONS} kohta. Osta või tühista olemasolevad broneeringud.`, {
+        id: 'reservation-limit',
+      })
       return
     }
 
@@ -222,10 +214,10 @@ export default function EventDetail() {
       setReservations((prev) => [...prev, reservation])
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setMessage(SEAT_TAKEN)
+        toast.error(SEAT_TAKEN)
         await resync()
       } else {
-        setMessage(getErrorMessage(err))
+        toast.error(errorMessage(err))
       }
     }
   }
@@ -243,7 +235,7 @@ export default function EventDetail() {
       updateSeat(seatId, 'Free')
       setReservations((prev) => prev.filter((r) => r.id !== reservation.id))
     } catch (err) {
-      setMessage(getErrorMessage(err))
+      toast.error(errorMessage(err))
       // 404: the hold is already gone; show the seat as it really is.
       if (err instanceof ApiError && err.status === 404) await resync()
     }
@@ -253,7 +245,6 @@ export default function EventDetail() {
   const withPending = async (seatId: number, action: () => Promise<void>) => {
     if (pending.current.has(seatId)) return
     pending.current.add(seatId)
-    setMessage(null)
     try {
       await action()
     } finally {
@@ -268,7 +259,7 @@ export default function EventDetail() {
       goToLogin()
       return
     }
-    if (purchasing || purchased) return
+    if (purchasing) return
     if (seat.state === 'Free') void withPending(seat.seatId, () => reserve(seat))
     else if (seat.state === 'Mine') void withPending(seat.seatId, () => cancel(seat.seatId))
   }
@@ -309,7 +300,6 @@ export default function EventDetail() {
             )}
 
             <Heading as="h2" size="6" mb="3">Vali koht</Heading>
-            {message && <ErrorCallout message={message} />}
 
             <Grid columns={{ initial: '1', md: '1fr 300px' }} gap="4" align="start">
               {/* minWidth 0 lets a wide hall scroll inside the card instead of stretching the grid. */}
@@ -325,12 +315,6 @@ export default function EventDetail() {
               <Card size="3" asChild>
                 <aside aria-labelledby="selection-heading">
                   <Heading as="h3" size="5" mb="3" id="selection-heading">Sinu valik</Heading>
-                  {purchased && (
-                    <Callout.Root color="green" role="status" mb="3">
-                      <Callout.Icon><i className="ti ti-circle-check" aria-hidden="true" /></Callout.Icon>
-                      <Callout.Text>{purchased}</Callout.Text>
-                    </Callout.Root>
-                  )}
                   {remainingMs !== null && (
                     <Flex align="center" justify="between" gap="2" mb="3">
                       <Text size="2" id="hold-timer-label">Aega jäänud</Text>
@@ -344,7 +328,7 @@ export default function EventDetail() {
                       </span>
                     </Flex>
                   )}
-                  {purchased ? null : !isBuyer ? (
+                  {!isBuyer ? (
                     <>
                       <Text as="p" size="2" color="gray" mb="3">Kohtade valimiseks logi sisse.</Text>
                       <Button onClick={goToLogin}>Logi sisse</Button>
