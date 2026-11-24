@@ -13,5 +13,8 @@ builder.Services.AddOptions<WorkerSettings>()
     .Validate(s => s.IntervalSeconds > 0, "Worker:IntervalSeconds must be greater than 0.")
     .ValidateOnStart();
 
+builder.Services.AddTransient<PiletimyykApiClient>();
+builder.Services.AddHostedService<ReleaseExpiredReservationsWorker>();
+
 var host = builder.Build();
 host.Run();
