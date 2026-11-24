@@ -2,12 +2,10 @@ using Microsoft.Extensions.Options;
 
 namespace Piletimyyk.Worker;
 
-/// <summary>
-/// Asks the API to release expired seat holds: once at startup, then every Worker:IntervalSeconds.
-/// A failed run is logged and the next tick tries again; the worker never stops because of it.
-/// </summary>
+/* Asks the API to release expired seat holds: once at startup, then every Worker:IntervalSeconds.
+   A failed run is logged and the next tick tries again; the worker never stops because of it. */
 public class ReleaseExpiredReservationsWorker(
-    IServiceScopeFactory scopeFactory,
+    PiletimyykApiClient api,
     IOptions<WorkerSettings> settings,
     ILogger<ReleaseExpiredReservationsWorker> logger) : BackgroundService
 {
@@ -35,11 +33,6 @@ public class ReleaseExpiredReservationsWorker(
     {
         try
         {
-            // A new scope per run, so the API client (and its HttpClient) isn't held for the
-            // lifetime of this singleton service.
-            using var scope = scopeFactory.CreateScope();
-            var api = scope.ServiceProvider.GetRequiredService<PiletimyykApiClient>();
-
             var result = await api.ReleaseExpiredAsync(stoppingToken);
 
             if (result.ReleasedCount == 0)

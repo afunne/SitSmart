@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Piletimyyk.Worker;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -13,7 +14,9 @@ builder.Services.AddOptions<WorkerSettings>()
     .Validate(s => s.IntervalSeconds > 0, "Worker:IntervalSeconds must be greater than 0.")
     .ValidateOnStart();
 
-builder.Services.AddTransient<PiletimyykApiClient>();
+builder.Services.AddHttpClient(PiletimyykApiClient.HttpClientName, (sp, client) =>
+    client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<WorkerSettings>>().Value.ApiBaseUrl));
+builder.Services.AddSingleton<PiletimyykApiClient>();
 builder.Services.AddHostedService<ReleaseExpiredReservationsWorker>();
 
 var host = builder.Build();
