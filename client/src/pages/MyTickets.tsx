@@ -1,9 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Badge, Box, Button, Card, Code, Container, Flex, Grid, Heading, Section, Spinner, Text } from '@radix-ui/themes'
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Code,
+  Container,
+  Flex,
+  Grid,
+  Heading,
+  Section,
+  Skeleton,
+  Spinner,
+  Text,
+  VisuallyHidden,
+} from '@radix-ui/themes'
 import { Link as RouterLink } from 'react-router'
 import { apiFetch, apiFetchBlob } from '../api/client.ts'
 import { errorMessage } from '../api/errorMessage.ts'
 import type { TicketDto } from '../api/types.ts'
+import EmptyState from '../components/EmptyState.tsx'
 import ErrorCallout from '../components/ErrorCallout.tsx'
 import { formatDateTime, rowLabel } from '../utils/format.ts'
 import './MyTickets.css'
@@ -78,6 +94,29 @@ function TicketCard({ ticket }: { ticket: TicketDto }) {
   )
 }
 
+/** Placeholder with the same shape as TicketCard, shown while the list loads. */
+function TicketCardSkeleton() {
+  return (
+    <Card size="3">
+      <Flex gap="4" justify="between" wrap="wrap">
+        <Box flexGrow="1">
+          <Skeleton width="60%" height="28px" mb="3" />
+          <Flex direction="column" gap="2" mb="3">
+            <Skeleton width="55%" height="16px" />
+            <Skeleton width="35%" height="16px" />
+            <Skeleton width="45%" height="16px" />
+          </Flex>
+          <Skeleton width="25%" height="12px" mb="2" />
+          <Skeleton width="50%" height="28px" />
+        </Box>
+        <Skeleton width="145px" height="145px" />
+      </Flex>
+    </Card>
+  )
+}
+
+const TICKET_GRID_COLUMNS = { initial: '1', md: '2' } as const
+
 export default function MyTickets() {
   const [tickets, setTickets] = useState<TicketDto[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -98,23 +137,31 @@ export default function MyTickets() {
         {error && <ErrorCallout message={error} />}
 
         {!error && tickets === null && (
-          <Flex align="center" gap="2">
-            <Spinner /> <Text color="gray">Laen pileteid…</Text>
-          </Flex>
+          <>
+            <VisuallyHidden role="status">Laen pileteid…</VisuallyHidden>
+            <Grid columns={TICKET_GRID_COLUMNS} gap="4" aria-hidden="true">
+              <TicketCardSkeleton />
+              <TicketCardSkeleton />
+            </Grid>
+          </>
         )}
 
         {tickets?.length === 0 && (
-          <Flex direction="column" align="start" gap="3">
-            <Text as="p" color="gray">Sul pole veel pileteid</Text>
-            <Button asChild size="3">
-              <RouterLink to="/">Vaata üritusi</RouterLink>
-            </Button>
-          </Flex>
+          <EmptyState
+            image="/img/seats/seat_red_sold_white.gif"
+            title="Sul pole veel pileteid"
+            text="Ostetud piletid ilmuvad siia koos QR-koodiga."
+            action={
+              <Button asChild size="3">
+                <RouterLink to="/">Vaata üritusi</RouterLink>
+              </Button>
+            }
+          />
         )}
 
         {/* The API sorts them: upcoming events first, then past ones. */}
         {tickets && tickets.length > 0 && (
-          <Grid columns={{ initial: '1', md: '2' }} gap="4">
+          <Grid columns={TICKET_GRID_COLUMNS} gap="4">
             {tickets.map((ticket) => (
               <TicketCard key={ticket.id} ticket={ticket} />
             ))}

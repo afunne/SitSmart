@@ -63,6 +63,11 @@ The frontend is React with [Radix Themes](https://www.radix-ui.com/themes). Our 
 
 Prices, seat numbers and times use the `tabular` class (`font-variant-numeric: tabular-nums`).
 
+## Pixel art
+
+Seat GIFs and other pixel art use the `pixelated` class (`image-rendering: pixelated`) and are shown
+at a whole multiple of their size: the 48×48 seat GIFs at 96 px in empty states and loaders.
+
 ## Icons
 
 Tabler Icons webfont 3.51.0 from jsDelivr (linked in `client/index.html`), e.g.
@@ -86,6 +91,9 @@ Tabler Icons webfont 3.51.0 from jsDelivr (linked in `client/index.html`), e.g.
 | Table | `<Table.Root variant="surface">` |
 | Inline notice | `<Callout.Root color="...">` (a page that failed to load) |
 | Toast | `toast.success()` / `toast.error()` from `sonner` (result of an action) |
+| Empty list | `<EmptyState image title text action>` (`components/EmptyState.tsx`): pixel seat, title, text, optional button |
+| Loading list | `<Skeleton>` cards with the same shape as the real cards, plus a hidden `role="status"` text |
+| Loading seat map | `seat_red_reserved.gif` + "Laadin kohti…" in the seat map card |
 | Layout | `<Container>`, `<Flex>`, `<Grid>`, `<Section>` |
 
 Radix Themes has no toast component, so toasts use `sonner`: one `<Toaster />` in `main.tsx`, colored
@@ -98,3 +106,4 @@ in `styles/toast.css`. Error texts come from `src/api/errorMessage.ts`.
 3. Royal Purple borders are decorative only; use `--border-strong` for borders that must be visible.
 4. Status colors: as text on dark backgrounds, or as a fill with Ink Purple text. Not as text on light backgrounds.
 5. Don't rely on color alone: sold seats show an X, statuses have an icon, the seat map has a legend.
+6. The hold countdown turns Light Ruby (Ink Purple text) in the last minute.

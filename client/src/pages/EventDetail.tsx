@@ -10,7 +10,7 @@ import {
   IconButton,
   Link,
   Section,
-  Spinner,
+  Skeleton,
   Text,
 } from '@radix-ui/themes'
 import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router'
@@ -276,9 +276,25 @@ export default function EventDetail() {
         {error && <ErrorCallout message={error} />}
 
         {!error && !data && (
-          <Flex align="center" gap="2">
-            <Spinner /> <Text color="gray">Laen üritust…</Text>
-          </Flex>
+          <>
+            <Box aria-hidden="true" mb="6">
+              <Skeleton width="50%" height="40px" mb="4" />
+              <Skeleton width="320px" maxWidth="100%" height="20px" />
+            </Box>
+            <Heading as="h2" size="6" mb="3">Vali koht</Heading>
+            <Grid columns={{ initial: '1', md: '1fr 300px' }} gap="4" align="start">
+              <Card size="3">
+                <Flex direction="column" align="center" justify="center" gap="3" py="9" role="status">
+                  <img src="/img/seats/seat_red_reserved.gif" alt="" width={96} height={96} className="pixelated" />
+                  <Text color="gray">Laadin kohti…</Text>
+                </Flex>
+              </Card>
+              <Card size="3" aria-hidden="true">
+                <Skeleton width="60%" height="24px" mb="3" />
+                <Skeleton width="80%" height="16px" />
+              </Card>
+            </Grid>
+          </>
         )}
 
         {data && (

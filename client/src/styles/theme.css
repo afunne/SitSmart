@@ -46,6 +46,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Pixel-art images (seats, empty states): keep the pixels sharp when scaled. Show them at a
+   whole multiple of their size, e.g. a 48 px GIF at 96 px. */
+.pixelated {
+  image-rendering: pixelated;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
