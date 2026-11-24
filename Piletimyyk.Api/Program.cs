@@ -1,3 +1,4 @@
+using System.Net.WebSockets;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Piletimyyk.Api.Data;
 using Piletimyyk.Api.Services;
+using Piletimyyk.Api.WebSockets;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,6 +79,7 @@ builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ICheckInService, CheckInService>();
 builder.Services.AddSingleton<ITicketCodeGenerator, TicketCodeGenerator>();
 builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
+builder.Services.AddSingleton<SeatSocketManager>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -116,10 +119,54 @@ app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseWebSockets();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Live seat updates. The JWT comes from ?access_token= (see OnMessageReceived above).
+app.Map("/ws/seats", async (HttpContext context, SeatSocketManager sockets) =>
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+
+    if (!context.WebSockets.IsWebSocketRequest)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        return;
+    }
+
+    using var socket = await context.WebSockets.AcceptWebSocketAsync();
+    var connectionId = Guid.NewGuid();
+    var buffer = new byte[4 * 1024];
+
+    try
+    {
+        // The server only pushes; whatever the client sends is read and ignored until it closes.
+        while (socket.State == WebSocketState.Open)
+        {
+            var result = await socket.ReceiveAsync(buffer.AsMemory(), context.RequestAborted);
+            if (result.MessageType == WebSocketMessageType.Close)
+            {
+                sockets.RemoveFromAll(connectionId);
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+            }
+        }
+    }
+    catch (Exception ex) when (ex is WebSocketException or OperationCanceledException)
+    {
+        // Client disappeared without a close message, or the server is shutting down.
+    }
+    finally
+    {
+        sockets.RemoveFromAll(connectionId);
+    }
+});
 
 // React Router deep links (e.g. /login) load the SPA from wwwroot/index.html.
 app.MapFallbackToFile("index.html");
