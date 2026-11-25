@@ -1,4 +1,3 @@
-using System.Net.WebSockets;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -142,30 +141,7 @@ app.Map("/ws/seats", async (HttpContext context, SeatSocketManager sockets) =>
     }
 
     using var socket = await context.WebSockets.AcceptWebSocketAsync();
-    var connectionId = Guid.NewGuid();
-    var buffer = new byte[4 * 1024];
-
-    try
-    {
-        // The server only pushes; whatever the client sends is read and ignored until it closes.
-        while (socket.State == WebSocketState.Open)
-        {
-            var result = await socket.ReceiveAsync(buffer.AsMemory(), context.RequestAborted);
-            if (result.MessageType == WebSocketMessageType.Close)
-            {
-                sockets.RemoveFromAll(connectionId);
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-            }
-        }
-    }
-    catch (Exception ex) when (ex is WebSocketException or OperationCanceledException)
-    {
-        // Client disappeared without a close message, or the server is shutting down.
-    }
-    finally
-    {
-        sockets.RemoveFromAll(connectionId);
-    }
+    await sockets.HandleConnectionAsync(socket, context.RequestAborted);
 });
 
 // React Router deep links (e.g. /login) load the SPA from wwwroot/index.html.

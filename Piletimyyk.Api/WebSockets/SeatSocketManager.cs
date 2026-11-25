@@ -14,16 +14,133 @@ public class SeatSocketManager(ILogger<SeatSocketManager> logger)
     // A client that stops reading must not hold up the request that is broadcasting.
     private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(5);
 
+    // Client messages are tiny ({"type":"join","eventId":5}); anything longer is dropped unread.
+    private const int MaxMessageBytes = 4 * 1024;
+
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, WebSocket>> _groups = new();
 
     /* A WebSocket allows only one SendAsync at a time, but two requests can broadcast to the same
        group at once, so every connection gets its own send lock. */
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _sendLocks = new();
 
+    // The group that receives seat updates for one event.
+    public static string EventGroup(int eventId) => $"event-{eventId}";
+
+    /* Runs one accepted /ws/seats connection until it closes. The client picks the event it
+       watches with {"type":"join","eventId":5} (one event at a time) and stops with
+       {"type":"leave"}. Invalid JSON and unknown types are ignored. */
+    public async Task HandleConnectionAsync(WebSocket socket, CancellationToken cancellationToken)
+    {
+        var connectionId = Guid.NewGuid();
+        var buffer = new byte[MaxMessageBytes];
+        string? currentGroup = null;
+
+        try
+        {
+            while (socket.State == WebSocketState.Open)
+            {
+                var (messageType, length) = await ReceiveMessageAsync(socket, buffer, cancellationToken);
+
+                if (messageType == WebSocketMessageType.Close)
+                {
+                    RemoveFromAll(connectionId);
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+                    break;
+                }
+
+                if (messageType != WebSocketMessageType.Text || length < 0)
+                {
+                    logger.LogDebug("Ignoring WebSocket message from {ConnectionId}: binary or too long.", connectionId);
+                    continue;
+                }
+
+                currentGroup = HandleClientMessage(connectionId, socket, buffer.AsSpan(0, length), currentGroup);
+            }
+        }
+        catch (Exception ex) when (ex is WebSocketException or OperationCanceledException)
+        {
+            // Client disappeared without a close message, or the server is shutting down.
+        }
+        finally
+        {
+            RemoveFromAll(connectionId);
+        }
+    }
+
+    /* Reads one whole message, which may arrive in several frames. Returns length -1 when it did
+       not fit in the buffer (the rest is read and thrown away). */
+    private static async Task<(WebSocketMessageType Type, int Length)> ReceiveMessageAsync(
+        WebSocket socket, byte[] buffer, CancellationToken cancellationToken)
+    {
+        var count = 0;
+        var tooLong = false;
+
+        while (true)
+        {
+            if (count == buffer.Length)
+            {
+                tooLong = true;
+                count = 0;
+            }
+
+            var result = await socket.ReceiveAsync(buffer.AsMemory(count), cancellationToken);
+            if (result.MessageType == WebSocketMessageType.Close)
+                return (WebSocketMessageType.Close, 0);
+
+            count += result.Count;
+            if (result.EndOfMessage)
+                return (result.MessageType, tooLong ? -1 : count);
+        }
+    }
+
+    // Applies one join/leave message and returns the group the connection is in afterwards.
+    private string? HandleClientMessage(Guid connectionId, WebSocket socket, ReadOnlySpan<byte> json, string? currentGroup)
+    {
+        ClientMessage? message;
+        try
+        {
+            message = JsonSerializer.Deserialize<ClientMessage>(json, JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogDebug(ex, "Ignoring WebSocket message from {ConnectionId}: invalid JSON.", connectionId);
+            return currentGroup;
+        }
+
+        switch (message?.Type)
+        {
+            case "join" when message.EventId is > 0:
+                var group = EventGroup(message.EventId.Value);
+                if (currentGroup is not null && currentGroup != group)
+                    RemoveFromGroup(currentGroup, connectionId);
+                AddToGroup(group, connectionId, socket);
+                return group;
+
+            case "join":
+                logger.LogDebug("Ignoring join from {ConnectionId}: missing or invalid eventId.", connectionId);
+                return currentGroup;
+
+            case "leave":
+                if (currentGroup is not null)
+                    RemoveFromGroup(currentGroup, connectionId);
+                return null;
+
+            default:
+                logger.LogDebug("Ignoring WebSocket message from {ConnectionId}: unknown type {Type}.", connectionId, message?.Type);
+                return currentGroup;
+        }
+    }
+
     public void AddToGroup(string group, Guid connectionId, WebSocket socket)
     {
         _sendLocks.GetOrAdd(connectionId, _ => new SemaphoreSlim(1, 1));
         _groups.GetOrAdd(group, _ => new ConcurrentDictionary<Guid, WebSocket>())[connectionId] = socket;
+    }
+
+    public void RemoveFromGroup(string group, Guid connectionId)
+    {
+        if (_groups.TryGetValue(group, out var members))
+            members.TryRemove(connectionId, out _);
     }
 
     /* Removes the connection from every group. Empty groups are kept (there is at most one per
@@ -72,4 +189,7 @@ public class SeatSocketManager(ILogger<SeatSocketManager> logger)
             sendLock.Release();
         }
     }
+
+    // What a client sends: {"type":"join","eventId":5} or {"type":"leave"}.
+    private sealed record ClientMessage(string? Type, int? EventId);
 }
