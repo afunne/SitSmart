@@ -79,6 +79,7 @@ builder.Services.AddScoped<ICheckInService, CheckInService>();
 builder.Services.AddSingleton<ITicketCodeGenerator, TicketCodeGenerator>();
 builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
 builder.Services.AddSingleton<SeatSocketManager>();
+builder.Services.AddSingleton<ISeatNotifier, SeatNotifier>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
