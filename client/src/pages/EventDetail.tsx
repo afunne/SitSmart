@@ -29,6 +29,7 @@ import type {
 import { useAuth } from '../auth/AuthContext.tsx'
 import ErrorCallout from '../components/ErrorCallout.tsx'
 import SeatMap from '../components/SeatMap.tsx'
+import { defaultEventImage } from '../utils/defaultEventImage.ts'
 import { formatDateTime, formatPrice, formatTime, rowLabel } from '../utils/format.ts'
 import './EventDetail.css'
 
@@ -42,6 +43,23 @@ function formatCountdown(ms: number): string {
   const totalSeconds = Math.ceil(ms / 1000)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${pad(Math.floor(totalSeconds / 60))}:${pad(totalSeconds % 60)}`
+}
+
+/** The event's picture, or the default one when there is no URL or it fails to load. */
+function EventPicture({ event }: { event: EventDto }) {
+  const [failed, setFailed] = useState(false)
+  const useDefault = !event.imageUrl || failed
+  return (
+    <img
+      className="event-detail-image"
+      // TODO(#40): pass event.hallType once the API returns it.
+      src={useDefault ? defaultEventImage() : event.imageUrl!}
+      alt=""
+      width={384}
+      height={216}
+      onError={() => setFailed(true)}
+    />
+  )
 }
 
 interface EventData {
@@ -299,21 +317,27 @@ export default function EventDetail() {
 
         {data && (
           <>
-            <Heading as="h1" size="8" mb="3">{data.event.name}</Heading>
-            <Flex gap="5" wrap="wrap" mb="4">
-              <Text className="tabular">
-                <i className="ti ti-calendar-event" aria-hidden="true" /> {formatDateTime(data.event.startsAt)}
-              </Text>
-              <Text>
-                <i className="ti ti-map-pin" aria-hidden="true" /> {data.event.hallName}
-              </Text>
-              <Text className="tabular">
-                <i className="ti ti-ticket" aria-hidden="true" /> {formatPrice(data.event.price)}
-              </Text>
+            <Flex gap="5" wrap="wrap" align="start" mb="6">
+              {/* key: a new event starts with a fresh load-failure state. */}
+              <EventPicture key={data.event.id} event={data.event} />
+              <Box flexBasis="320px" flexGrow="1" minWidth="0">
+                <Heading as="h1" size="8" mb="3">{data.event.name}</Heading>
+                <Flex gap="5" wrap="wrap" mb="4">
+                  <Text className="tabular">
+                    <i className="ti ti-calendar-event" aria-hidden="true" /> {formatDateTime(data.event.startsAt)}
+                  </Text>
+                  <Text>
+                    <i className="ti ti-map-pin" aria-hidden="true" /> {data.event.hallName}
+                  </Text>
+                  <Text className="tabular">
+                    <i className="ti ti-ticket" aria-hidden="true" /> {formatPrice(data.event.price)}
+                  </Text>
+                </Flex>
+                {data.event.description && (
+                  <Text as="p" color="gray" style={{ whiteSpace: 'pre-line' }}>{data.event.description}</Text>
+                )}
+              </Box>
             </Flex>
-            {data.event.description && (
-              <Text as="p" color="gray" mb="6" style={{ whiteSpace: 'pre-line' }}>{data.event.description}</Text>
-            )}
 
             <Heading as="h2" size="6" mb="3">Vali koht</Heading>
 

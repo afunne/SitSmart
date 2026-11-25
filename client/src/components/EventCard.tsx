@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { Badge, Box, Button, Card, Flex, Heading, Inset, Text } from '@radix-ui/themes'
 import { Link as RouterLink } from 'react-router'
 import type { EventDto } from '../api/types.ts'
+import { defaultEventImage } from '../utils/defaultEventImage.ts'
 import { formatDateTime, formatDay, formatMonthShort, formatPrice } from '../utils/format.ts'
 import './EventCard.css'
-
-const DEFAULT_IMAGE = '/img/events/event_default_theatre.gif'
 
 export default function EventCard({ event }: { event: EventDto }) {
   // Fall back to the default picture when there is no URL or it fails to load.
@@ -17,7 +16,8 @@ export default function EventCard({ event }: { event: EventDto }) {
       <Inset clip="padding-box" side="top" pb="current" className="event-card-media">
         <img
           className="event-card-image"
-          src={useDefault ? DEFAULT_IMAGE : event.imageUrl!}
+          // TODO(#40): pass event.hallType once the API returns it.
+          src={useDefault ? defaultEventImage() : event.imageUrl!}
           alt=""
           width={384}
           height={216}

@@ -1,3 +1,16 @@
+/* Event picture next to the title (under it on narrow screens): 16:9, pixel art kept sharp. */
+.event-detail-image {
+  display: block;
+  width: 320px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  image-rendering: pixelated;
+  border-radius: var(--radius-4);
+  background: var(--plum-raised);
+}
+
 .selection-list {
   margin: 0;
   padding: 0;
