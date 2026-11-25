@@ -9,16 +9,52 @@
   margin-top: auto;
 }
 
-/* Same 16:9 frame for every picture; other sizes are cropped, not stretched. */
+/* Holds the picture and the date badge on top of it. */
+.event-card-media {
+  position: relative;
+}
+
+/* Same 16:9 frame for every picture; other sizes are cropped, not stretched.
+   The pictures are pixel art, so their pixels stay sharp when scaled. */
 .event-card-image {
   display: block;
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
+  image-rendering: pixelated;
 }
 
-/* The default picture is pixel art; keep its pixels sharp when scaled. */
-.event-card-image--pixel {
-  image-rendering: pixelated;
+/* Date on the picture: day over month, Light Ruby with Ink Purple text. */
+.event-card-date {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-1) var(--space-2);
+  line-height: 1.1;
+  text-align: center;
+  font-weight: 700;
+}
+
+.event-card-date-day {
+  font-size: var(--font-size-5);
+}
+
+.event-card-date-month {
+  font-size: var(--font-size-1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Hover lift, only for mouse users who haven't asked for less motion. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .event-card {
+    transition: transform var(--card-lift-duration) ease-out;
+  }
+
+  .event-card:hover {
+    transform: translateY(var(--card-lift));
+  }
 }

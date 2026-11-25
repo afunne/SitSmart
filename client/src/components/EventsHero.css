@@ -1,0 +1,85 @@
+/* Full-width band under the header; the content lines up with the page via Radix Container. */
+.events-hero {
+  background: var(--hero-background);
+  border-bottom: 1px solid var(--royal);
+}
+
+.events-hero-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding-block: var(--space-9);
+}
+
+.events-hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.events-hero-title {
+  line-height: 1.1;
+}
+
+.events-hero-lead {
+  color: var(--hero-text-muted);
+  max-width: 40ch;
+}
+
+/* Seat map on a Deep Plum panel: 4 rows of 7 pixel seats with the stage under them. */
+.events-hero-map {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--hero-seat-gap);
+  padding: var(--space-6);
+  background: var(--plum);
+  border: 1px solid var(--royal);
+  border-radius: var(--radius-5);
+}
+
+.events-hero-row {
+  display: flex;
+  gap: var(--hero-seat-gap);
+}
+
+.events-hero-seat,
+.events-hero-stage {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.events-hero-seat {
+  width: var(--hero-seat-size);
+  height: var(--hero-seat-size);
+}
+
+/* As wide as a row of seats: 7 seats and 6 gaps. */
+.events-hero-stage {
+  width: calc(7 * var(--hero-seat-size) + 6 * var(--hero-seat-gap));
+  height: auto;
+  margin-top: var(--space-3);
+}
+
+/* Phones (below Radix's sm breakpoint): the map goes under the text, with smaller seats. */
+@media (max-width: 767px) {
+  .events-hero {
+    --hero-seat-size: var(--hero-seat-size-small);
+  }
+
+  .events-hero-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-6);
+    padding-block: var(--space-7);
+  }
+
+  .events-hero-map {
+    align-self: center;
+    padding: var(--space-4);
+  }
+}

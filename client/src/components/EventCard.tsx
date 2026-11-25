@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Box, Button, Card, Flex, Heading, Inset, Text } from '@radix-ui/themes'
+import { Badge, Box, Button, Card, Flex, Heading, Inset, Text } from '@radix-ui/themes'
 import { Link as RouterLink } from 'react-router'
 import type { EventDto } from '../api/types.ts'
-import { formatDateTime, formatPrice } from '../utils/format.ts'
+import { formatDateTime, formatDay, formatMonthShort, formatPrice } from '../utils/format.ts'
 import './EventCard.css'
 
 const DEFAULT_IMAGE = '/img/events/event_default_theatre.gif'
@@ -14,15 +14,20 @@ export default function EventCard({ event }: { event: EventDto }) {
 
   return (
     <Card size="2" className="event-card">
-      <Inset clip="padding-box" side="top" pb="current">
+      <Inset clip="padding-box" side="top" pb="current" className="event-card-media">
         <img
-          className={useDefault ? 'event-card-image event-card-image--pixel' : 'event-card-image'}
+          className="event-card-image"
           src={useDefault ? DEFAULT_IMAGE : event.imageUrl!}
           alt=""
           width={384}
           height={216}
           onError={() => setImageFailed(true)}
         />
+        {/* Hidden from screen readers: the full date is in the text below. */}
+        <Badge color="ruby" variant="solid" size="2" className="event-card-date" aria-hidden="true">
+          <span className="event-card-date-day tabular">{formatDay(event.startsAt)}</span>
+          <span className="event-card-date-month">{formatMonthShort(event.startsAt)}</span>
+        </Badge>
       </Inset>
 
       <Heading as="h2" size="5" mb="2">{event.name}</Heading>

@@ -1,13 +1,47 @@
 import { useEffect, useState } from 'react'
-import { Card, Container, Flex, Grid, Heading, Inset, Section, Skeleton, VisuallyHidden } from '@radix-ui/themes'
+import { Button, Card, Container, Flex, Grid, Heading, Inset, Section, Skeleton, VisuallyHidden } from '@radix-ui/themes'
 import { apiFetch } from '../api/client.ts'
 import { errorMessage } from '../api/errorMessage.ts'
 import type { EventDto } from '../api/types.ts'
 import EmptyState from '../components/EmptyState.tsx'
 import ErrorCallout from '../components/ErrorCallout.tsx'
 import EventCard from '../components/EventCard.tsx' // also loads EventCard.css, used by the skeleton
+import EventsHero from '../components/EventsHero.tsx'
+import './Events.css'
 
 const EVENT_GRID_COLUMNS = { initial: '1', sm: '2', md: '3' } as const
+
+const LIST_ID = 'uritused'
+
+/** Category filter from the design. Events have no category yet, so only "Kõik" can be chosen. */
+const CATEGORIES = [
+  { label: 'Kõik', available: true },
+  { label: 'Kontserdid', available: false },
+  { label: 'Teater', available: false },
+  { label: 'Stand-up', available: false },
+  { label: 'Kino', available: false },
+]
+
+function CategoryFilter() {
+  return (
+    <Flex role="group" aria-label="Kategooria" gap="2" wrap="wrap">
+      {CATEGORIES.map(({ label, available }) => (
+        <Button
+          key={label}
+          type="button"
+          radius="full"
+          variant={label === 'Kõik' ? 'solid' : 'outline'}
+          color={label === 'Kõik' ? undefined : 'gray'}
+          highContrast={label !== 'Kõik'}
+          aria-pressed={label === 'Kõik'}
+          disabled={!available}
+        >
+          {label}
+        </Button>
+      ))}
+    </Flex>
+  )
+}
 
 /** Placeholder with the same shape as EventCard, shown while the list loads. */
 function EventCardSkeleton() {
@@ -45,39 +79,48 @@ export default function Events() {
   }, [])
 
   return (
-    <Container size="4" px="4">
-      <Section size="2">
-        <Heading as="h1" size="8" mb="5">Üritused</Heading>
+    <>
+      <EventsHero listId={LIST_ID} />
+      <Container size="4" px="4">
+        <Section size="2">
+          <Flex align="end" justify="between" gap="4" wrap="wrap" mb="5">
+            {/* tabIndex -1: "Vaata üritusi" moves focus here. */}
+            <Heading as="h2" size="7" id={LIST_ID} tabIndex={-1} className="events-list-heading">
+              Tulevased üritused
+            </Heading>
+            <CategoryFilter />
+          </Flex>
 
-        {error && <ErrorCallout message={error} />}
+          {error && <ErrorCallout message={error} />}
 
-        {!error && events === null && (
-          <>
-            <VisuallyHidden role="status">Laen üritusi…</VisuallyHidden>
-            <Grid columns={EVENT_GRID_COLUMNS} gap="4" aria-hidden="true">
-              <EventCardSkeleton />
-              <EventCardSkeleton />
-              <EventCardSkeleton />
+          {!error && events === null && (
+            <>
+              <VisuallyHidden role="status">Laen üritusi…</VisuallyHidden>
+              <Grid columns={EVENT_GRID_COLUMNS} gap="4" aria-hidden="true">
+                <EventCardSkeleton />
+                <EventCardSkeleton />
+                <EventCardSkeleton />
+              </Grid>
+            </>
+          )}
+
+          {events?.length === 0 && (
+            <EmptyState
+              image="/img/seats/seat_red_free.gif"
+              title="Üritusi pole"
+              text="Praegu pole ühtegi eelseisvat üritust."
+            />
+          )}
+
+          {events && events.length > 0 && (
+            <Grid columns={EVENT_GRID_COLUMNS} gap="4">
+              {events.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
             </Grid>
-          </>
-        )}
-
-        {events?.length === 0 && (
-          <EmptyState
-            image="/img/seats/seat_red_free.gif"
-            title="Üritusi pole"
-            text="Praegu pole ühtegi eelseisvat üritust."
-          />
-        )}
-
-        {events && events.length > 0 && (
-          <Grid columns={EVENT_GRID_COLUMNS} gap="4">
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </Grid>
-        )}
-      </Section>
-    </Container>
+          )}
+        </Section>
+      </Container>
+    </>
   )
 }

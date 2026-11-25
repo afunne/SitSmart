@@ -8,6 +8,19 @@ export function formatDateTime(iso: string): string {
   return dateTimeFormat.format(new Date(iso))
 }
 
+const dayFormat = new Intl.DateTimeFormat('et-EE', { day: '2-digit' })
+const monthShortFormat = new Intl.DateTimeFormat('et-EE', { month: 'short' })
+
+/** "04" in the browser's time zone. */
+export function formatDay(iso: string): string {
+  return dayFormat.format(new Date(iso))
+}
+
+/** "dets" in the browser's time zone (shown in capitals with CSS). */
+export function formatMonthShort(iso: string): string {
+  return monthShortFormat.format(new Date(iso))
+}
+
 const timeFormat = new Intl.DateTimeFormat('et-EE', { timeStyle: 'short' })
 
 /** "19:00" in the browser's time zone. */

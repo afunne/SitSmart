@@ -1,0 +1,9 @@
+/* "Vaata üritusi" scrolls here and focuses the heading: leave some room above it, and no focus
+   ring, since the heading itself can't be used (it only marks where reading continues). */
+.events-list-heading {
+  scroll-margin-top: var(--space-5);
+}
+
+.events-list-heading:focus {
+  outline: none;
+}
