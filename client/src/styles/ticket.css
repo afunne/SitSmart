@@ -1,0 +1,246 @@
+/*
+ * Printable ticket (TicketCard). A light Lavender Mist ticket on the dark page: the info on the
+ * left, a perforated edge, and the QR stub on white on the right. Below 480 px of ticket width
+ * the stub moves under the info and the perforation turns horizontal.
+ */
+
+.ticket {
+  --ticket-ink: var(--ink);
+  --ticket-muted: var(--royal);          /* labels: 10.4:1 on Mist */
+  --ticket-surface: var(--mist);
+  --ticket-perforation: #C9B8DB;
+  --ticket-cutout: var(--ink);           /* the notches show the page behind the ticket */
+  --ticket-stamp: var(--seat-sold);      /* 9.6:1 on Mist */
+  --ticket-qr-size: 174px;               /* 29 modules × 6 px: whole pixels per module, so it stays sharp */
+
+  container-type: inline-size;
+  break-inside: avoid;
+  color: var(--ticket-ink);
+}
+
+.ticket-body {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--ticket-surface);
+}
+
+/* ---- Info ---- */
+
+.ticket-info {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+}
+
+/* The logo file has wide empty margins: show only the wordmark (x 443–1325, y 140–428 of the
+   1640×664 file) at 1/7 scale, the same crop as the header. Dark letters, so it needs this light surface. */
+.ticket-logo {
+  position: relative;
+  width: 126px;
+  height: 41px;
+  overflow: hidden;
+}
+
+.ticket-logo img {
+  position: absolute;
+  top: -20px;
+  left: -63.3px;
+  width: 234.3px;
+  max-width: none;
+  height: auto;
+}
+
+.ticket-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ticket-when {
+  font-size: 14px;
+  color: var(--ticket-muted);
+}
+
+.ticket-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 6px 0 0;
+}
+
+.ticket-details div {
+  display: flex;
+  flex-direction: column;
+}
+
+.ticket-details dt {
+  font-size: 12px;
+  color: var(--ticket-muted);
+}
+
+.ticket-details dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ---- Perforation and QR stub ---- */
+
+.ticket-stub {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px;
+  border-left: 2px dashed var(--ticket-perforation);
+  background: #fff;
+}
+
+/* Half-circle notches where the perforation meets the edges, like a tear-off stub. */
+.ticket-stub::before,
+.ticket-stub::after {
+  content: '';
+  position: absolute;
+  left: -11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ticket-cutout);
+}
+
+.ticket-stub::before {
+  top: -10px;
+}
+
+.ticket-stub::after {
+  bottom: -10px;
+}
+
+/* QR codes need dark on light to scan, so the code always sits on white, with the PNG's own
+   4-module quiet zone around it. */
+.ticket-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ticket-qr-size);
+  height: var(--ticket-qr-size);
+  background: #fff;
+  color: var(--ticket-ink); /* spinner and error text */
+}
+
+.ticket-qr img {
+  display: block;
+  width: var(--ticket-qr-size);
+  height: var(--ticket-qr-size);
+  image-rendering: pixelated;
+}
+
+.ticket-qr-error {
+  padding: 8px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.ticket-code {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+/* ---- Used ---- */
+
+.ticket-stamp {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  padding: 4px 12px;
+  border: 3px solid var(--ticket-stamp);
+  border-radius: 8px;
+  color: var(--ticket-stamp);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+/* Still readable (a controller may need it), but clearly not a ticket to show at the door. */
+.ticket--used .ticket-qr {
+  opacity: 0.3;
+}
+
+/* ---- Narrow: stub under the info ---- */
+
+@container (max-width: 479px) {
+  .ticket-body {
+    flex-direction: column;
+  }
+
+  .ticket-stub {
+    border-left: none;
+    border-top: 2px dashed var(--ticket-perforation);
+  }
+
+  .ticket-stub::before,
+  .ticket-stub::after {
+    top: -11px;
+    bottom: auto;
+  }
+
+  .ticket-stub::before {
+    left: -10px;
+  }
+
+  .ticket-stub::after {
+    left: auto;
+    right: -10px;
+  }
+}
+
+/* ---- Print: only the tickets, black on white ----
+   Scoped with :has(.ticket) because Vite keeps this file loaded after leaving the page, and
+   other pages should still print normally. */
+
+@media print {
+  body:has(.ticket) .site-header,
+  body:has(.ticket) [data-sonner-toaster],
+  body:has(.ticket) .ticket-print-hidden {
+    display: none !important;
+  }
+
+  body:has(.ticket),
+  body:has(.ticket) .radix-themes {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .ticket {
+    --ticket-ink: #000;
+    --ticket-muted: #000;
+    --ticket-surface: #fff;
+    --ticket-perforation: #000;
+    --ticket-stamp: #000;
+  }
+
+  .ticket-body {
+    border: 1px solid #000;
+  }
+
+  /* The notches would cut into the border; on paper the dashed line is enough. */
+  .ticket-stub::before,
+  .ticket-stub::after {
+    display: none;
+  }
+}

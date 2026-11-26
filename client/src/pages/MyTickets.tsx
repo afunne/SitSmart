@@ -1,119 +1,12 @@
 import { useEffect, useState } from 'react'
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Code,
-  Container,
-  Flex,
-  Grid,
-  Heading,
-  Section,
-  Skeleton,
-  Spinner,
-  Text,
-  VisuallyHidden,
-} from '@radix-ui/themes'
+import { Box, Button, Container, Grid, Heading, Section, VisuallyHidden } from '@radix-ui/themes'
 import { Link as RouterLink } from 'react-router'
-import { apiFetch, apiFetchBlob } from '../api/client.ts'
+import { apiFetch } from '../api/client.ts'
 import { errorMessage } from '../api/errorMessage.ts'
 import type { TicketDto } from '../api/types.ts'
 import EmptyState from '../components/EmptyState.tsx'
 import ErrorCallout from '../components/ErrorCallout.tsx'
-import { formatDateTime, rowLabel } from '../utils/format.ts'
-import './MyTickets.css'
-
-/**
- * The ticket's QR code. Loaded with fetch because the endpoint needs the token, which an
- * <img src> can't send; the blob URL is revoked when the component unmounts.
- */
-function TicketQr({ code }: { code: string }) {
-  const [src, setSrc] = useState<string | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    let url: string | null = null
-
-    apiFetchBlob(`/api/tickets/${encodeURIComponent(code)}/qr`, { signal: controller.signal })
-      .then((blob) => {
-        if (controller.signal.aborted) return // unmounted while the body was still loading
-        url = URL.createObjectURL(blob)
-        setSrc(url)
-      })
-      .catch(() => { if (!controller.signal.aborted) setFailed(true) })
-
-    return () => {
-      controller.abort()
-      if (url) URL.revokeObjectURL(url)
-    }
-  }, [code])
-
-  return (
-    <div className="ticket-qr">
-      {src ? (
-        <img src={src} alt={`QR-kood, pilet ${code}`} width={145} height={145} />
-      ) : failed ? (
-        <Text size="1" align="center" className="ticket-qr-error">QR-koodi ei õnnestunud laadida.</Text>
-      ) : (
-        <Spinner aria-label="Laen QR-koodi" />
-      )}
-    </div>
-  )
-}
-
-function TicketCard({ ticket }: { ticket: TicketDto }) {
-  return (
-    <Card size="3">
-      <Flex gap="4" justify="between" wrap="wrap">
-        <Box>
-          <Flex align="center" gap="2" wrap="wrap" mb="2">
-            <Heading as="h2" size="5">{ticket.eventName}</Heading>
-            {ticket.usedAt && (
-              <Badge size="2" color="gray"><i className="ti ti-circle-check" aria-hidden="true" />Kasutatud</Badge>
-            )}
-          </Flex>
-          <Flex direction="column" gap="1" mb="3">
-            <Text size="2" className="tabular">
-              <i className="ti ti-calendar-event" aria-hidden="true" /> {formatDateTime(ticket.startsAt)}
-            </Text>
-            <Text size="2">
-              <i className="ti ti-map-pin" aria-hidden="true" /> {ticket.hallName}
-            </Text>
-            <Text size="2" className="tabular">
-              <i className="ti ti-armchair" aria-hidden="true" /> Rida {rowLabel(ticket.row)}, koht {ticket.number}
-            </Text>
-          </Flex>
-          <Text as="div" size="1" color="gray">Pileti kood</Text>
-          <Code size="4" variant="ghost" className="ticket-code">{ticket.code}</Code>
-        </Box>
-        <TicketQr code={ticket.code} />
-      </Flex>
-    </Card>
-  )
-}
-
-/** Placeholder with the same shape as TicketCard, shown while the list loads. */
-function TicketCardSkeleton() {
-  return (
-    <Card size="3">
-      <Flex gap="4" justify="between" wrap="wrap">
-        <Box flexGrow="1">
-          <Skeleton width="60%" height="28px" mb="3" />
-          <Flex direction="column" gap="2" mb="3">
-            <Skeleton width="55%" height="16px" />
-            <Skeleton width="35%" height="16px" />
-            <Skeleton width="45%" height="16px" />
-          </Flex>
-          <Skeleton width="25%" height="12px" mb="2" />
-          <Skeleton width="50%" height="28px" />
-        </Box>
-        <Skeleton width="145px" height="145px" />
-      </Flex>
-    </Card>
-  )
-}
+import TicketCard, { TicketCardSkeleton } from '../components/TicketCard.tsx'
 
 const TICKET_GRID_COLUMNS = { initial: '1', md: '2' } as const
 
@@ -132,7 +25,8 @@ export default function MyTickets() {
   return (
     <Container size="4" px="4">
       <Section size="2">
-        <Heading as="h1" size="8" mb="5">Minu piletid</Heading>
+        {/* When printing, ticket.css hides everything but the tickets themselves. */}
+        <Heading as="h1" size="8" mb="5" className="ticket-print-hidden">Minu piletid</Heading>
 
         {error && <ErrorCallout message={error} />}
 
@@ -161,11 +55,18 @@ export default function MyTickets() {
 
         {/* The API sorts them: upcoming events first, then past ones. */}
         {tickets && tickets.length > 0 && (
-          <Grid columns={TICKET_GRID_COLUMNS} gap="4">
-            {tickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
-            ))}
-          </Grid>
+          <>
+            <Grid columns={TICKET_GRID_COLUMNS} gap="4">
+              {tickets.map((ticket) => (
+                <TicketCard key={ticket.id} ticket={ticket} />
+              ))}
+            </Grid>
+            <Box mt="5" className="ticket-print-hidden">
+              <Button size="3" onClick={() => window.print()}>
+                <i className="ti ti-printer" aria-hidden="true" /> Prindi
+              </Button>
+            </Box>
+          </>
         )}
       </Section>
     </Container>
