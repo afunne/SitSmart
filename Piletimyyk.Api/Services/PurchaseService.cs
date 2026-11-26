@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Piletimyyk.Api.Data;
 using Piletimyyk.Api.Dtos;
 using Piletimyyk.Api.Models;
+using Piletimyyk.Api.WebSockets;
 
 namespace Piletimyyk.Api.Services;
 
@@ -21,11 +22,13 @@ public class PurchaseService : IPurchaseService
 
     private readonly AppDbContext _db;
     private readonly ITicketCodeGenerator _codeGenerator;
+    private readonly ISeatNotifier _notifier;
 
-    public PurchaseService(AppDbContext db, ITicketCodeGenerator codeGenerator)
+    public PurchaseService(AppDbContext db, ITicketCodeGenerator codeGenerator, ISeatNotifier notifier)
     {
         _db = db;
         _codeGenerator = codeGenerator;
+        _notifier = notifier;
     }
 
     public async Task<ServiceResult<TicketDto>> PurchaseAsync(int reservationId, int userId)
@@ -90,6 +93,9 @@ public class PurchaseService : IPurchaseService
         }
 
         await transaction.CommitAsync();
+
+        // Only after the commit: a rolled-back sale must never mark the seat as sold.
+        await _notifier.SeatSoldAsync(ticket.EventId, ticket.SeatId);
 
         var ev = reservation.Event;
         var seat = reservation.Seat;

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Piletimyyk.Api.Data;
 using Piletimyyk.Api.Dtos;
 using Piletimyyk.Api.Models;
+using Piletimyyk.Api.WebSockets;
 
 namespace Piletimyyk.Api.Services;
 
@@ -39,11 +40,13 @@ public class ReservationService : IReservationService
 
     private readonly AppDbContext _db;
     private readonly ReservationOptions _options;
+    private readonly ISeatNotifier _notifier;
 
-    public ReservationService(AppDbContext db, IOptions<ReservationOptions> options)
+    public ReservationService(AppDbContext db, IOptions<ReservationOptions> options, ISeatNotifier notifier)
     {
         _db = db;
         _options = options.Value;
+        _notifier = notifier;
     }
 
     public async Task<ServiceResult<ReservationDto>> ReserveAsync(int eventId, int seatId, int userId)
@@ -148,6 +151,9 @@ public class ReservationService : IReservationService
 
         await transaction.CommitAsync();
 
+        // Only after the commit: a rolled-back hold must never show up on other seat maps.
+        await _notifier.SeatReservedAsync(eventId, seatId);
+
         return ServiceResult<ReservationDto>.Ok(new ReservationDto(
             reservation.Id, eventId, seatId, seat.Row, seat.Number, reservation.ExpiresAt));
     }
@@ -168,6 +174,8 @@ public class ReservationService : IReservationService
         // An expired hold is deleted too; the seat is already free, this just tidies up.
         _db.Reservations.Remove(reservation);
         await _db.SaveChangesAsync();
+
+        await _notifier.SeatReleasedAsync(reservation.EventId, reservation.SeatId);
 
         return ServiceResult.Ok();
     }
@@ -218,8 +226,11 @@ public class ReservationService : IReservationService
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
 
-        // TODO: notify clients over WebSocket that these seats are free again, so open seat
-        // maps update without a reload. (Added in a later step.)
+        // After the commit, so open seat maps only ever show seats that really are free.
+        foreach (var seat in seats)
+        {
+            await _notifier.SeatReleasedAsync(seat.EventId, seat.SeatId);
+        }
 
         return new ReleaseExpiredResponse(seats.Count, seats);
     }
