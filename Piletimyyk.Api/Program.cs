@@ -76,6 +76,7 @@ builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ICheckInService, CheckInService>();
+builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddSingleton<ITicketCodeGenerator, TicketCodeGenerator>();
 builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
 builder.Services.AddSingleton<SeatSocketManager>();

@@ -145,14 +145,21 @@ export interface CheckInConflict {
   usedAt?: IsoDateTime
 }
 
-// ---- Admin statistics (provisional) ----
+// ---- Admin statistics (Dtos/EventStatsDto.cs) ----
 
+/**
+ * GET /api/events/{id}/stats and GET /api/stats/events (admin only).
+ * sold + reserved + free = totalSeats; reserved counts only active holds on unsold seats.
+ */
 export interface EventStatsDto {
   eventId: number
-  eventName: string
+  name: string
   totalSeats: number
-  soldSeats: number
-  reservedSeats: number
-  freeSeats: number
+  sold: number
+  reserved: number
+  free: number
+  checkedIn: number
+  /** sold / totalSeats × 100, one decimal: 33.3 */
+  fillPercent: number
   revenue: number
 }
