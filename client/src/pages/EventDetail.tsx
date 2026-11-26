@@ -29,6 +29,7 @@ import type {
 import { useAuth } from '../auth/AuthContext.tsx'
 import ErrorCallout from '../components/ErrorCallout.tsx'
 import SeatMap from '../components/SeatMap.tsx'
+import { useSeatSocket, type SeatMessage } from '../hooks/useSeatSocket.ts'
 import { defaultEventImage } from '../utils/defaultEventImage.ts'
 import { formatDateTime, formatPrice, formatTime, rowLabel } from '../utils/format.ts'
 import './EventDetail.css'
@@ -37,6 +38,16 @@ import './EventDetail.css'
 const MAX_ACTIVE_RESERVATIONS = 6
 
 const SEAT_TAKEN = 'Koht on juba võetud - vali mõni teine'
+
+/** The seat state each WebSocket message moves a seat to. */
+const SOCKET_SEAT_STATE: Record<SeatMessage['type'], SeatState> = {
+  SeatReserved: 'Reserved',
+  SeatReleased: 'Free',
+  SeatSold: 'Sold',
+}
+
+/** How long a seat changed by someone else pulses: .seat--changed runs 3 × 600 ms. */
+const PULSE_MS = 1800
 
 /** 272_000 → "04:32". Rounds up, so the display reaches 00:00 exactly when the hold expires. */
 function formatCountdown(ms: number): string {
@@ -90,12 +101,15 @@ function useEventData(eventId: number) {
   /**
    * Sets one seat's state, e.g. after reserving it or when the WebSocket reports that another
    * buyer took it. Stable between renders, so it can be passed to hooks and effects.
+   * keepMine: leave the seat alone if it is ours (checked against the latest state, so it also
+   * holds when our own 'Mine' update is still queued).
    */
-  const updateSeat = useCallback((seatId: number, state: SeatState) => {
+  const updateSeat = useCallback((seatId: number, state: SeatState, { keepMine = false } = {}) => {
     setData((prev) => {
       if (!prev) return prev
       const seats = prev.seatMap.seats
-      if (!seats.some((s) => s.seatId === seatId && s.state !== state)) return prev
+      const changes = (s: SeatDto) => s.seatId === seatId && s.state !== state && !(keepMine && s.state === 'Mine')
+      if (!seats.some(changes)) return prev
       return {
         ...prev,
         seatMap: { ...prev.seatMap, seats: seats.map((s) => (s.seatId === seatId ? { ...s, state } : s)) },
@@ -282,6 +296,47 @@ export default function EventDetail() {
     else if (seat.state === 'Mine') void withPending(seat.seatId, () => cancel(seat.seatId))
   }
 
+  // ---- Live updates from other buyers ----
+
+  /** Seats that just changed; SeatMap pulses them. */
+  const [changedSeatIds, setChangedSeatIds] = useState<Set<number>>(() => new Set())
+  const pulseTimers = useRef(new Map<number, number>())
+
+  useEffect(() => {
+    const timers = pulseTimers.current
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [])
+
+  const pulse = (seatId: number) => {
+    window.clearTimeout(pulseTimers.current.get(seatId))
+    setChangedSeatIds((prev) => new Set(prev).add(seatId))
+    pulseTimers.current.set(seatId, window.setTimeout(() => {
+      pulseTimers.current.delete(seatId)
+      setChangedSeatIds((prev) => {
+        const next = new Set(prev)
+        next.delete(seatId)
+        return next
+      })
+    }, PULSE_MS))
+  }
+
+  /** The server sends these for our own changes too; those are already shown, so they are skipped. */
+  const handleSeatMessage = (message: SeatMessage) => {
+    // Our request for this seat is still running: its response sets the state (or a 409 resyncs).
+    if (pending.current.has(message.seatId)) return
+
+    const current = data?.seatMap.seats.find((s) => s.seatId === message.seatId)
+    const state = SOCKET_SEAT_STATE[message.type]
+    if (!current || current.state === state) return
+    if (message.type === 'SeatReserved' && current.state === 'Mine') return
+
+    updateSeat(message.seatId, state, { keepMine: message.type === 'SeatReserved' })
+    // Our own seat being sold or expiring isn't someone else's change, so it doesn't pulse.
+    if (current.state !== 'Mine') pulse(message.seatId)
+  }
+
+  useSeatSocket(eventId, handleSeatMessage)
+
   return (
     <Container size="4" px="4">
       <Section size="2">
@@ -349,6 +404,7 @@ export default function EventDetail() {
                   seatsPerRow={data.seatMap.seatsPerRow}
                   seats={data.seatMap.seats}
                   onSeatClick={handleSeatClick}
+                  changedSeatIds={changedSeatIds}
                 />
               </Card>
 
