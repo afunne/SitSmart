@@ -541,5 +541,5 @@ SitSmart/
 
 <p align="center">
   <img src="client/public/img/seats/seat_red_sold_ginger.gif" alt="" width="48"><br>
-  Tehtud ja -:3 ga - Hussein Tahmazov, TTHK 2026
+  Tehtud ja armastus-ga :3 - Hussein Tahmazov, TECHNO 2026
 </p>
