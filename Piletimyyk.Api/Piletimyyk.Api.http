@@ -1,6 +1,530 @@
-@Piletimyyk.Api_HostAddress = http://localhost:5237
+# Every API endpoint, in the order of a real flow: the admin sets up a hall and an event, buyers
+# reserve, cancel and buy, a controller checks the ticket in at the door, the worker releases
+# expired holds, the admin looks at the stats and cleans up.
+#
+# Run the requests top to bottom: later ones use ids and tokens from earlier responses
+# (# @name requests). Each run creates its own hall and event, so the file can be run again.
+# Every request says the status it should get ("Expected: ...").
+#
+# Works in Visual Studio (17.12+) and VS Code with the REST Client extension.
+# Start the API first: dotnet run --project Piletimyyk.Api
+# For section 9 (expired hold) see the note there; don't run Piletimyyk.Worker meanwhile.
 
-GET {{Piletimyyk.Api_HostAddress}}/
-Accept: text/html
+@host = http://localhost:5237
+@unknownId = 999999
+@unknownCode = NOSUCHCODE00
 
-###
+
+### ===== 1. Login (users from DbSeeder) =====
+
+### Admin
+# Expected: 200
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@sitsmart.ee", "password": "Admin123!" }
+
+### Buyer
+# Expected: 200
+# @name loginBuyer
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "buyer@sitsmart.ee", "password": "Buyer123!" }
+
+### Second buyer
+# Expected: 200
+# @name loginBuyer2
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "buyer2@sitsmart.ee", "password": "Buyer123!" }
+
+### Controller (checks tickets at the door)
+# Expected: 200
+# @name loginControl
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "control@sitsmart.ee", "password": "Control123!" }
+
+### Service (used by Piletimyyk.Worker)
+# Expected: 200
+# @name loginService
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "service@sitsmart.ee", "password": "Service123!" }
+
+### Wrong password
+# Expected: 401
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "buyer@sitsmart.ee", "password": "wrong" }
+
+### Who am I
+# Expected: 200 (email and role Buyer)
+GET {{host}}/api/auth/me
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Who am I, without a token
+# Expected: 401
+GET {{host}}/api/auth/me
+
+
+### ===== 2. Admin: halls =====
+
+### List halls
+# Expected: 200
+GET {{host}}/api/halls
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Create a hall (3 rows × 4 seats)
+# Expected: 201
+# @name createHall
+POST {{host}}/api/halls
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "Proovisaal {{$randomInt 1000 9999}}", "rows": 3, "seatsPerRow": 4 }
+
+### Get the hall
+# Expected: 200
+GET {{host}}/api/halls/{{createHall.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Rename the hall
+# Expected: 200
+PUT {{host}}/api/halls/{{createHall.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "Proovisaal {{$randomInt 1000 9999}} (uus nimi)" }
+
+### Halls without a token
+# Expected: 401
+GET {{host}}/api/halls
+
+### Halls as a buyer
+# Expected: 403 (admin only)
+GET {{host}}/api/halls
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Unknown hall
+# Expected: 404
+GET {{host}}/api/halls/{{unknownId}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+
+### ===== 3. Admin: events =====
+
+### Create an event in the new hall, 30 days from now
+# Expected: 201
+# @name createEvent
+POST {{host}}/api/events
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "Proovikontsert",
+  "description": "Loodud failist Piletimyyk.Api.http.",
+  "imageUrl": null,
+  "startsAt": "{{$datetime iso8601 30 d}}",
+  "hallId": {{createHall.response.body.$.id}},
+  "price": 12.50
+}
+
+### Change the event (price 14.00)
+# Expected: 200
+PUT {{host}}/api/events/{{createEvent.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "Proovikontsert",
+  "description": "Loodud failist Piletimyyk.Api.http. Hind muudetud.",
+  "imageUrl": null,
+  "startsAt": "{{$datetime iso8601 30 d}}",
+  "hallId": {{createHall.response.body.$.id}},
+  "price": 14.00
+}
+
+### Create an event without a token
+# Expected: 401
+POST {{host}}/api/events
+Content-Type: application/json
+
+{ "name": "X", "description": "", "imageUrl": null, "startsAt": "{{$datetime iso8601 30 d}}", "hallId": {{createHall.response.body.$.id}}, "price": 1 }
+
+### Create an event as a buyer
+# Expected: 403 (admin only)
+POST {{host}}/api/events
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "X", "description": "", "imageUrl": null, "startsAt": "{{$datetime iso8601 30 d}}", "hallId": {{createHall.response.body.$.id}}, "price": 1 }
+
+### Change an unknown event
+# Expected: 404
+PUT {{host}}/api/events/{{unknownId}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "X", "description": "", "imageUrl": null, "startsAt": "{{$datetime iso8601 30 d}}", "hallId": {{createHall.response.body.$.id}}, "price": 1 }
+
+
+### ===== 4. Anyone: browse events and seats =====
+
+### All events (no token needed)
+# Expected: 200
+GET {{host}}/api/events
+
+### One event
+# Expected: 200
+GET {{host}}/api/events/{{createEvent.response.body.$.id}}
+
+### Seat map, anonymous: every seat Free
+# Expected: 200
+# @name seatMap
+GET {{host}}/api/events/{{createEvent.response.body.$.id}}/seats
+
+### Unknown event
+# Expected: 404
+GET {{host}}/api/events/{{unknownId}}
+
+### Seat map of an unknown event
+# Expected: 404
+GET {{host}}/api/events/{{unknownId}}/seats
+
+
+### ===== 5. Buyer: reserve a seat =====
+
+### Buyer holds seat A (row 1, seat 1)
+# Expected: 201
+# @name reserveA
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[0].seatId}} }
+
+### Seat map as the buyer: seat A is Mine
+# Expected: 200
+GET {{host}}/api/events/{{createEvent.response.body.$.id}}/seats
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Seat map as the second buyer: seat A is Reserved
+# Expected: 200
+GET {{host}}/api/events/{{createEvent.response.body.$.id}}/seats
+Authorization: Bearer {{loginBuyer2.response.body.$.token}}
+
+### Buyer's active holds
+# Expected: 200
+GET {{host}}/api/reservations/my
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Second buyer tries the same seat
+# Expected: 409 (seat taken)
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Authorization: Bearer {{loginBuyer2.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[0].seatId}} }
+
+### Reserve without a token
+# Expected: 401
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[1].seatId}} }
+
+### Reserve as an admin
+# Expected: 403 (buyers only)
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[1].seatId}} }
+
+### Reserve in an unknown event
+# Expected: 404
+POST {{host}}/api/events/{{unknownId}}/reservations
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[1].seatId}} }
+
+### Reserve an unknown seat
+# Expected: 404
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{unknownId}} }
+
+### My holds as an admin
+# Expected: 403 (buyers only)
+GET {{host}}/api/reservations/my
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+
+### ===== 6. Buyer: cancel a hold =====
+
+### Buyer holds seat B (row 1, seat 2)
+# Expected: 201
+# @name reserveB
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[1].seatId}} }
+
+### Second buyer tries to cancel the buyer's hold
+# Expected: 403 (someone else's hold)
+DELETE {{host}}/api/reservations/{{reserveB.response.body.$.id}}
+Authorization: Bearer {{loginBuyer2.response.body.$.token}}
+
+### Buyer cancels seat B
+# Expected: 204
+DELETE {{host}}/api/reservations/{{reserveB.response.body.$.id}}
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Cancel it again
+# Expected: 404 (already gone)
+DELETE {{host}}/api/reservations/{{reserveB.response.body.$.id}}
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Cancel without a token
+# Expected: 401
+DELETE {{host}}/api/reservations/{{reserveA.response.body.$.id}}
+
+
+### ===== 7. Buyer: buy seat A =====
+
+### Second buyer tries to buy the buyer's hold
+# Expected: 403 (someone else's hold)
+POST {{host}}/api/reservations/{{reserveA.response.body.$.id}}/purchase
+Authorization: Bearer {{loginBuyer2.response.body.$.token}}
+
+### Buyer buys seat A: the hold becomes a ticket
+# Expected: 200
+# @name purchaseA
+POST {{host}}/api/reservations/{{reserveA.response.body.$.id}}/purchase
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Buy the same hold again
+# Expected: 404 (the hold was turned into the ticket)
+POST {{host}}/api/reservations/{{reserveA.response.body.$.id}}/purchase
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Second buyer tries the sold seat
+# Expected: 409 (seat taken: sold)
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Authorization: Bearer {{loginBuyer2.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[0].seatId}} }
+
+### Buy without a token
+# Expected: 401
+POST {{host}}/api/reservations/{{reserveA.response.body.$.id}}/purchase
+
+### Buy an unknown hold
+# Expected: 404
+POST {{host}}/api/reservations/{{unknownId}}/purchase
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+
+### ===== 8. Tickets: my tickets, QR code, check-in at the door =====
+
+### Buyer's tickets
+# Expected: 200
+GET {{host}}/api/tickets/my
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### My tickets without a token
+# Expected: 401
+GET {{host}}/api/tickets/my
+
+### My tickets as a controller
+# Expected: 403 (buyers only)
+GET {{host}}/api/tickets/my
+Authorization: Bearer {{loginControl.response.body.$.token}}
+
+### QR code, as the ticket's owner
+# Expected: 200 (image/png)
+GET {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/qr
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### QR code, as an admin
+# Expected: 200 (image/png)
+GET {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/qr
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### QR code of someone else's ticket
+# Expected: 403 (owner or admin only)
+GET {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/qr
+Authorization: Bearer {{loginBuyer2.response.body.$.token}}
+
+### QR code without a token
+# Expected: 401
+GET {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/qr
+
+### QR code of an unknown ticket
+# Expected: 404
+GET {{host}}/api/tickets/{{unknownCode}}/qr
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Check-in as a buyer
+# Expected: 403 (controllers only)
+POST {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/check-in
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Check-in without a token
+# Expected: 401
+POST {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/check-in
+
+### Controller checks the ticket in
+# Expected: 200
+POST {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/check-in
+Authorization: Bearer {{loginControl.response.body.$.token}}
+
+### Check the same ticket in again
+# Expected: 409 (already used; the message and "usedAt" say when)
+POST {{host}}/api/tickets/{{purchaseA.response.body.$.code}}/check-in
+Authorization: Bearer {{loginControl.response.body.$.token}}
+
+### Check-in of an unknown ticket
+# Expected: 404
+POST {{host}}/api/tickets/{{unknownCode}}/check-in
+Authorization: Bearer {{loginControl.response.body.$.token}}
+
+
+### ===== 9. Expired hold =====
+# A hold lasts Reservations:HoldMinutes (10 by default). To wait less, start the API with
+#   dotnet run --project Piletimyyk.Api -- --Reservations:HoldMinutes=1
+# (then do sections 5-7 within a minute). Don't run Piletimyyk.Worker: it would release the
+# expired hold, and buying it would then give 404 instead of 409.
+
+### Buyer holds seat C (row 1, seat 3)
+# Expected: 201
+# @name reserveC
+POST {{host}}/api/events/{{createEvent.response.body.$.id}}/reservations
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+Content-Type: application/json
+
+{ "seatId": {{seatMap.response.body.$.seats[2].seatId}} }
+
+### Wait until the hold has expired, then buy it
+# Expected: 409 (expired reservation)
+POST {{host}}/api/reservations/{{reserveC.response.body.$.id}}/purchase
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+
+### ===== 10. Worker: release expired holds =====
+
+### Release expired holds as the service user (seat C is in the list)
+# Expected: 200
+POST {{host}}/api/reservations/release-expired
+Authorization: Bearer {{loginService.response.body.$.token}}
+
+### Release as a buyer
+# Expected: 403 (service only)
+POST {{host}}/api/reservations/release-expired
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Release without a token
+# Expected: 401
+POST {{host}}/api/reservations/release-expired
+
+
+### ===== 11. Admin: stats =====
+
+### Stats of the event (1 sold, 14.00 revenue)
+# Expected: 200
+GET {{host}}/api/events/{{createEvent.response.body.$.id}}/stats
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Stats of all events
+# Expected: 200
+GET {{host}}/api/stats/events
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Stats as a buyer
+# Expected: 403 (admin only)
+GET {{host}}/api/stats/events
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Stats without a token
+# Expected: 401
+GET {{host}}/api/stats/events
+
+### Stats of an unknown event
+# Expected: 404
+GET {{host}}/api/events/{{unknownId}}/stats
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+
+### ===== 12. Admin: delete =====
+
+### Delete the event that has a sold ticket
+# Expected: 409 (tickets sold)
+DELETE {{host}}/api/events/{{createEvent.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Delete the hall that has an event
+# Expected: 409 (hall has events)
+DELETE {{host}}/api/halls/{{createHall.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Create an event to delete
+# Expected: 201
+# @name throwawayEvent
+POST {{host}}/api/events
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "Kustutatav üritus",
+  "description": "",
+  "imageUrl": null,
+  "startsAt": "{{$datetime iso8601 60 d}}",
+  "hallId": {{createHall.response.body.$.id}},
+  "price": 5.00
+}
+
+### Delete it as a buyer
+# Expected: 403 (admin only)
+DELETE {{host}}/api/events/{{throwawayEvent.response.body.$.id}}
+Authorization: Bearer {{loginBuyer.response.body.$.token}}
+
+### Delete it
+# Expected: 204
+DELETE {{host}}/api/events/{{throwawayEvent.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Delete it again
+# Expected: 404
+DELETE {{host}}/api/events/{{throwawayEvent.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Create an empty hall to delete
+# Expected: 201
+# @name throwawayHall
+POST {{host}}/api/halls
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "Kustutatav saal {{$randomInt 1000 9999}}", "rows": 1, "seatsPerRow": 1 }
+
+### Delete it
+# Expected: 204
+DELETE {{host}}/api/halls/{{throwawayHall.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
+
+### Delete an unknown hall
+# Expected: 404
+DELETE {{host}}/api/halls/{{unknownId}}
+Authorization: Bearer {{loginAdmin.response.body.$.token}}
