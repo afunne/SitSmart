@@ -5,6 +5,7 @@ import RequireRole from './auth/RequireRole.tsx'
 import Layout from './components/Layout.tsx'
 import AdminEvents from './pages/admin/AdminEvents.tsx'
 import AdminHalls from './pages/admin/AdminHalls.tsx'
+import AdminStats from './pages/admin/AdminStats.tsx'
 import Controller from './pages/Controller.tsx'
 import EventDetail from './pages/EventDetail.tsx'
 import Events from './pages/Events.tsx'
@@ -50,6 +51,14 @@ const router = createBrowserRouter([
         element: (
           <RequireRole roles={['Admin']}>
             <AdminEvents />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'admin/stats',
+        element: (
+          <RequireRole roles={['Admin']}>
+            <AdminStats />
           </RequireRole>
         ),
       },
