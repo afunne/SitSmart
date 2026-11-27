@@ -33,7 +33,13 @@
 - [Arhitektuur](#arhitektuur)
 - [Tehnoloogiad](#tehnoloogiad)
 - [Dokumentatsioon](#dokumentatsioon)
+- [Nõuded](#nõuded)
 - [Käivitamine](#käivitamine)
+- [Testkasutajad](#testkasutajad)
+- [API otspunktid](#api-otspunktid)
+- [WebSocket](#websocket)
+- [Testimine](#testimine)
+- [Projekti struktuur](#projekti-struktuur)
 
 ## <img src="https://api.iconify.design/lucide/ticket.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Mis see on?
 
@@ -124,26 +130,150 @@ flowchart LR
 
 - [Disainijuhend](docs/design.md): värvid, kirjad, pikslikunst, komponendid ja reeglid
 
+## <img src="https://api.iconify.design/lucide/list-checks.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Nõuded
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Node.js](https://nodejs.org/) LTS
+- [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) (testi `tests/double-sale.ps1` jaoks)
+
 ## <img src="https://api.iconify.design/lucide/terminal.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Käivitamine
 
-API (ühe korra: määra vähemalt 32 märgi pikkune JWT-võti):
+1. **Klooni repo:**
+
+   ```bash
+   git clone https://github.com/afunne/SitSmart.git
+   cd SitSmart
+   ```
+
+2. **Käivita API.** Ühe korra määra vähemalt 32 märgi pikkune JWT-võti:
+
+   ```bash
+   cd Piletimyyk.Api
+   dotnet user-secrets set "Jwt:Key" "<vähemalt 32 märki>"
+   dotnet run --launch-profile http
+   ```
+
+   API töötab aadressil http://localhost:5237 ja Swagger aadressil http://localhost:5237/swagger
+   (arenduskeskkonnas). Esimesel käivitamisel luuakse andmebaas ja lisatakse näidisandmed: saal,
+   kaks üritust ja [testkasutajad](#testkasutajad).
+
+3. **Käivita Worker** teises terminalis, repo juurkaustast. Ühe korra määra Service-kasutaja parool:
+
+   ```bash
+   cd Piletimyyk.Worker
+   dotnet user-secrets set "Worker:Password" "Service123!"
+   dotnet run
+   ```
+
+4. **Käivita frontend** kolmandas terminalis, repo juurkaustast:
+
+   ```bash
+   cd client
+   npm install
+   npm run dev
+   ```
+
+   Ava http://localhost:5173. Vite suunab `/api` ja `/ws` päringud API-le edasi.
+
+> [!TIP]
+> Käivita API enne Workerit. Muidu logib Worker esimesel katsel vea ja proovib alles minuti pärast
+> uuesti.
+
+**Tootmisversioon:** `npm run build` kaustas `client` ehitab frontendi kausta
+`Piletimyyk.Api/wwwroot`. Siis serveerib API kogu rakendust aadressil http://localhost:5237.
+
+**Visual Studio:** lahenduse menüüst _Configure Startup Projects_ → _Multiple startup projects_ ja
+pane nii `Piletimyyk.Api` kui ka `Piletimyyk.Worker` olekusse _Start_. Frontendi käivita ikka
+`npm run dev`-iga.
+
+## <img src="https://api.iconify.design/lucide/users.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Testkasutajad
+
+| E-post                | Parool        | Roll                       |
+| --------------------- | ------------- | -------------------------- |
+| `admin@sitsmart.ee`   | `Admin123!`   | Admin                      |
+| `buyer@sitsmart.ee`   | `Buyer123!`   | Buyer                      |
+| `buyer2@sitsmart.ee`  | `Buyer123!`   | Buyer                      |
+| `control@sitsmart.ee` | `Control123!` | Controller                 |
+| `service@sitsmart.ee` | `Service123!` | Service (ainult Workerile) |
+
+> [!WARNING]
+> Need on ainult testkontod, mille `DbSeeder` loob arenduse andmebaasi. Ära kasuta neid paroole
+> päris keskkonnas.
+
+## <img src="https://api.iconify.design/lucide/route.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;API otspunktid
+
+<details>
+<summary>Kõik otspunktid (23)</summary>
+
+| Meetod   | Tee                                  | Roll             | Mida teeb                                               |
+| -------- | ------------------------------------ | ---------------- | ------------------------------------------------------- |
+| `POST`   | `/api/auth/login`                    | kõik             | Sisselogimine, tagastab JWT                             |
+| `GET`    | `/api/auth/me`                       | sisse logitud    | Sisse logitud kasutaja e-post ja roll                   |
+| `GET`    | `/api/halls`                         | Admin            | Kõik saalid                                             |
+| `GET`    | `/api/halls/{id}`                    | Admin            | Üks saal                                                |
+| `POST`   | `/api/halls`                         | Admin            | Uus saal, kohad luuakse ridade ja kohtade arvu järgi    |
+| `PUT`    | `/api/halls/{id}`                    | Admin            | Saali ümbernimetamine                                   |
+| `DELETE` | `/api/halls/{id}`                    | Admin            | Saali kustutamine (409, kui saalis on üritusi)          |
+| `GET`    | `/api/events`                        | kõik             | Kõik üritused, eelseisvad enne                          |
+| `GET`    | `/api/events/{id}`                   | kõik             | Üks üritus                                              |
+| `GET`    | `/api/events/{id}/seats`             | kõik             | Saaliplaan; tokeniga on enda broneeringud olekus "Mine" |
+| `POST`   | `/api/events`                        | Admin            | Uus üritus                                              |
+| `PUT`    | `/api/events/{id}`                   | Admin            | Ürituse muutmine                                        |
+| `DELETE` | `/api/events/{id}`                   | Admin            | Ürituse kustutamine (409, kui pileteid on müüdud)       |
+| `POST`   | `/api/events/{eventId}/reservations` | Buyer            | Koha broneerimine (409, kui koht on võetud)             |
+| `GET`    | `/api/reservations/my`               | Buyer            | Enda kehtivad broneeringud                              |
+| `DELETE` | `/api/reservations/{id}`             | Buyer            | Enda broneeringu tühistamine                            |
+| `POST`   | `/api/reservations/{id}/purchase`    | Buyer            | Ostmine: broneeringust saab pilet (409, kui aegunud)    |
+| `POST`   | `/api/reservations/release-expired`  | Service          | Aegunud broneeringute vabastamine (Worker)              |
+| `GET`    | `/api/events/{id}/stats`             | Admin            | Ühe ürituse statistika                                  |
+| `GET`    | `/api/stats/events`                  | Admin            | Kõigi ürituste statistika                               |
+| `GET`    | `/api/tickets/my`                    | Buyer            | Enda piletid                                            |
+| `GET`    | `/api/tickets/{code}/qr`             | omanik või Admin | Pileti QR-kood (PNG)                                    |
+| `POST`   | `/api/tickets/{code}/check-in`       | Controller       | Pileti märkimine kasutatuks (409, kui juba kasutatud)   |
+
+</details>
+
+## <img src="https://api.iconify.design/lucide/radio.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;WebSocket
+
+Saaliplaan saab kohtade muutused WebSocketi kaudu. Ühenduda saab iga sisse logitud kasutaja; kuna
+brauser ei saa WebSocketile päist lisada, käib JWT aadressi sees:
 
 ```
-cd Piletimyyk.Api
-dotnet user-secrets set "Jwt:Key" "<random key>"
-dotnet run --launch-profile http
+ws://localhost:5237/ws/seats?access_token=<JWT>
 ```
 
-Frontend teises terminalis (http://localhost:5173, suunab `/api` ja `/ws` API-le edasi):
+Ürituse jälgimiseks saada pärast ühendumist (korraga saab jälgida ühte üritust, `{"type":"leave"}`
+lõpetab):
 
-```
-cd client
-npm install
-npm run dev
+```json
+{ "type": "join", "eventId": 1 }
 ```
 
-`npm run build` ehitab frontendi kausta `Piletimyyk.Api/wwwroot`, mida API serveerib aadressil
-http://localhost:5237.
+Server lisab ühenduse gruppi `event-{eventId}` ja saadab sinna iga kohamuutuse. `type` on
+`SeatReserved`, `SeatReleased` või `SeatSold`:
+
+```json
+{ "type": "SeatSold", "eventId": 1, "seatId": 5 }
+```
+
+## <img src="https://api.iconify.design/lucide/flask-conical.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Testimine
+
+- **`Piletimyyk.Api/Piletimyyk.Api.http`:** kõik otspunktid kõigi rollidega, iga päringu juures
+  oodatud vastuse kood. Käivita Visual Studios või VS Code'is REST Client laiendiga.
+- **`pwsh tests/double-sale.ps1`:** kaks ostjat proovivad sama kohta korraga broneerida ja osta.
+  Oodatud tulemus: üks õnnestub, teine saab 409. Test ostab päriselt ühe pileti.
+
+## <img src="https://api.iconify.design/lucide/folder-tree.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Projekti struktuur
+
+```text
+SitSmart/
+├── Piletimyyk.Api/       ASP.NET Core Web API: kontrollerid, teenused, EF Core, WebSocket
+│   └── Piletimyyk.Api.http   kõik otspunktid kõigi rollidega
+├── Piletimyyk.Worker/    taustateenus, mis vabastab aegunud broneeringud
+├── client/               React + TypeScript + Vite
+├── docs/                 disainijuhend
+└── tests/                double-sale.ps1
+```
 
 [^et-hoid]: Hoidmise aega saab muuta API seadega `Reservations:HoldMinutes` (vaikimisi 10).
 
@@ -160,7 +290,13 @@ http://localhost:5237.
 - [Architecture](#architecture)
 - [Technologies](#technologies)
 - [Documentation](#documentation)
-- [How to run](#how-to-run)
+- [Requirements](#requirements)
+- [Running](#running)
+- [Test users](#test-users)
+- [API endpoints](#api-endpoints)
+- [WebSocket](#websocket-1)
+- [Testing](#testing)
+- [Project structure](#project-structure)
 
 ## <img src="https://api.iconify.design/lucide/ticket.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;What is it?
 
@@ -252,29 +388,158 @@ flowchart LR
 
 - [Design guide](docs/design.md): colors, type, pixel art, components and rules
 
-## <img src="https://api.iconify.design/lucide/terminal.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;How to run
+## <img src="https://api.iconify.design/lucide/list-checks.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Requirements
 
-API (once: set a JWT key of at least 32 characters):
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Node.js](https://nodejs.org/) LTS
+- [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) (for the `tests/double-sale.ps1` test)
+
+## <img src="https://api.iconify.design/lucide/terminal.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Running
+
+1. **Clone the repo:**
+
+   ```bash
+   git clone https://github.com/afunne/SitSmart.git
+   cd SitSmart
+   ```
+
+2. **Start the API.** Once, set a JWT key of at least 32 characters:
+
+   ```bash
+   cd Piletimyyk.Api
+   dotnet user-secrets set "Jwt:Key" "<at least 32 characters>"
+   dotnet run --launch-profile http
+   ```
+
+   The API runs at http://localhost:5237, Swagger at http://localhost:5237/swagger (in the
+   Development environment). On the first start it creates the database and adds sample data: a
+   hall, two events and the [test users](#test-users).
+
+3. **Start the Worker** in a second terminal, from the repo root. Once, set the Service user's
+   password:
+
+   ```bash
+   cd Piletimyyk.Worker
+   dotnet user-secrets set "Worker:Password" "Service123!"
+   dotnet run
+   ```
+
+4. **Start the frontend** in a third terminal, from the repo root:
+
+   ```bash
+   cd client
+   npm install
+   npm run dev
+   ```
+
+   Open http://localhost:5173. Vite forwards `/api` and `/ws` requests to the API.
+
+> [!TIP]
+> Start the API before the Worker. Otherwise the Worker logs an error on its first try and only
+> tries again a minute later.
+
+**Production build:** `npm run build` in `client` builds the frontend into
+`Piletimyyk.Api/wwwroot`. The API then serves the whole app at http://localhost:5237.
+
+**Visual Studio:** in the solution's _Configure Startup Projects_, choose _Multiple startup
+projects_ and set both `Piletimyyk.Api` and `Piletimyyk.Worker` to _Start_. Run the frontend with
+`npm run dev` as before.
+
+## <img src="https://api.iconify.design/lucide/users.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Test users
+
+| Email                 | Password      | Role                          |
+| --------------------- | ------------- | ----------------------------- |
+| `admin@sitsmart.ee`   | `Admin123!`   | Admin                         |
+| `buyer@sitsmart.ee`   | `Buyer123!`   | Buyer                         |
+| `buyer2@sitsmart.ee`  | `Buyer123!`   | Buyer                         |
+| `control@sitsmart.ee` | `Control123!` | Controller                    |
+| `service@sitsmart.ee` | `Service123!` | Service (only for the Worker) |
+
+> [!WARNING]
+> These are test accounts only, created by `DbSeeder` in the development database. Don't use these
+> passwords anywhere real.
+
+## <img src="https://api.iconify.design/lucide/route.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;API endpoints
+
+<details>
+<summary>All endpoints (23)</summary>
+
+| Method   | Path                                 | Role           | What it does                                                |
+| -------- | ------------------------------------ | -------------- | ----------------------------------------------------------- |
+| `POST`   | `/api/auth/login`                    | anyone         | Log in, returns a JWT                                       |
+| `GET`    | `/api/auth/me`                       | logged in      | The logged-in user's email and role                         |
+| `GET`    | `/api/halls`                         | Admin          | All halls                                                   |
+| `GET`    | `/api/halls/{id}`                    | Admin          | One hall                                                    |
+| `POST`   | `/api/halls`                         | Admin          | New hall; seats are created from the rows and seats per row |
+| `PUT`    | `/api/halls/{id}`                    | Admin          | Rename a hall                                               |
+| `DELETE` | `/api/halls/{id}`                    | Admin          | Delete a hall (409 if it has events)                        |
+| `GET`    | `/api/events`                        | anyone         | All events, upcoming first                                  |
+| `GET`    | `/api/events/{id}`                   | anyone         | One event                                                   |
+| `GET`    | `/api/events/{id}/seats`             | anyone         | Seat map; with a token, your own holds show as "Mine"       |
+| `POST`   | `/api/events`                        | Admin          | New event                                                   |
+| `PUT`    | `/api/events/{id}`                   | Admin          | Change an event                                             |
+| `DELETE` | `/api/events/{id}`                   | Admin          | Delete an event (409 if tickets are sold)                   |
+| `POST`   | `/api/events/{eventId}/reservations` | Buyer          | Hold a seat (409 if the seat is taken)                      |
+| `GET`    | `/api/reservations/my`               | Buyer          | Your active holds                                           |
+| `DELETE` | `/api/reservations/{id}`             | Buyer          | Cancel one of your holds                                    |
+| `POST`   | `/api/reservations/{id}/purchase`    | Buyer          | Buy: the hold becomes a ticket (409 if it has expired)      |
+| `POST`   | `/api/reservations/release-expired`  | Service        | Release expired holds (the Worker)                          |
+| `GET`    | `/api/events/{id}/stats`             | Admin          | One event's statistics                                      |
+| `GET`    | `/api/stats/events`                  | Admin          | Statistics of all events                                    |
+| `GET`    | `/api/tickets/my`                    | Buyer          | Your tickets                                                |
+| `GET`    | `/api/tickets/{code}/qr`             | owner or Admin | The ticket's QR code (PNG)                                  |
+| `POST`   | `/api/tickets/{code}/check-in`       | Controller     | Mark the ticket as used (409 if it already was)             |
+
+</details>
+
+## <img src="https://api.iconify.design/lucide/radio.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;WebSocket
+
+The seat map gets seat changes over a WebSocket. Any logged-in user can connect; browsers can't add
+headers to a WebSocket, so the JWT goes in the URL:
 
 ```
-cd Piletimyyk.Api
-dotnet user-secrets set "Jwt:Key" "<random key>"
-dotnet run --launch-profile http
+ws://localhost:5237/ws/seats?access_token=<JWT>
 ```
 
-Frontend, in a second terminal (http://localhost:5173, forwards `/api` and `/ws` to the API):
+To watch an event, send this after connecting (one event at a time; `{"type":"leave"}` stops):
 
-```
-cd client
-npm install
-npm run dev
+```json
+{ "type": "join", "eventId": 1 }
 ```
 
-`npm run build` builds the frontend into `Piletimyyk.Api/wwwroot`, which the API serves at
-http://localhost:5237.
+The server adds the connection to the group `event-{eventId}` and sends every seat change there.
+`type` is `SeatReserved`, `SeatReleased` or `SeatSold`:
+
+```json
+{ "type": "SeatSold", "eventId": 1, "seatId": 5 }
+```
+
+## <img src="https://api.iconify.design/lucide/flask-conical.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Testing
+
+- **`Piletimyyk.Api/Piletimyyk.Api.http`:** every endpoint with every role, each request with the
+  status code it should get. Run it in Visual Studio, or in VS Code with the REST Client extension.
+- **`pwsh tests/double-sale.ps1`:** two buyers try to reserve and buy the same seat at the same
+  moment. Expected: one succeeds, the other gets 409. The test really buys a ticket.
+
+## <img src="https://api.iconify.design/lucide/folder-tree.svg?color=%23E0457B" alt="" width="24" height="24">&nbsp;Project structure
+
+```text
+SitSmart/
+├── Piletimyyk.Api/       ASP.NET Core Web API: controllers, services, EF Core, WebSocket
+│   └── Piletimyyk.Api.http   every endpoint with every role
+├── Piletimyyk.Worker/    background service that releases expired holds
+├── client/               React + TypeScript + Vite
+├── docs/                 design guide
+└── tests/                double-sale.ps1
+```
 
 [^en-hold]: The hold time is set with the API setting `Reservations:HoldMinutes` (10 by default).
 
 [^en-worker]: The Worker runs once a minute; change it with `Worker:IntervalSeconds`.
 
 [^en-cats]: The cat is picked from the seat's row and number, so the same seat always shows the same cat.
+
+<p align="center">
+  <img src="client/public/img/seats/seat_red_sold_ginger.gif" alt="" width="48"><br>
+  Tehtud ja -:3 ga - Hussein Tahmazov, TTHK 2026
+</p>
