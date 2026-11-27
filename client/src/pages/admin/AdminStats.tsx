@@ -3,6 +3,7 @@ import {
   Card,
   Container,
   DataList,
+  Flex,
   Grid,
   Heading,
   Link,
@@ -17,12 +18,8 @@ import { errorMessage } from '../../api/errorMessage.ts'
 import type { EventStatsDto } from '../../api/types.ts'
 import EmptyState from '../../components/EmptyState.tsx'
 import ErrorCallout from '../../components/ErrorCallout.tsx'
-import { formatPrice } from '../../utils/format.ts'
-
-const percentFormat = new Intl.NumberFormat('et-EE', { style: 'percent', maximumFractionDigits: 1 })
-
-/** 33.3 → "33,3%" */
-const formatPercent = (fillPercent: number) => percentFormat.format(fillPercent / 100)
+import { formatPercent, formatPrice } from '../../utils/format.ts'
+import { FillPercentBars, SeatSplitDonut } from './StatsCharts.tsx'
 
 const SKELETON_ROWS = 4
 
@@ -80,41 +77,47 @@ export default function AdminStats() {
           />
         ) : (
           <Grid columns={{ initial: '1', lg: '1fr 320px' }} gap="4" align="start">
-            <StatsTable>
-              {stats.map(s => {
-                const selected = s.eventId === selectedId
-                return (
-                  <Table.Row
-                    key={s.eventId}
-                    align="center"
-                    onClick={() => setSelectedId(s.eventId)}
-                    style={{
-                      cursor: 'pointer',
-                      backgroundColor: selected ? 'var(--accent-a4)' : undefined,
-                    }}
-                  >
-                    <Table.RowHeaderCell>
-                      {/* The button makes the row usable with the keyboard; its click reaches the row's onClick. */}
-                      <Link asChild weight={selected ? 'bold' : 'medium'} highContrast={selected}>
-                        <button
-                          type="button"
-                          aria-pressed={selected}
-                          style={{ background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
-                        >
-                          {s.name}
-                        </button>
-                      </Link>
-                    </Table.RowHeaderCell>
-                    <Table.Cell justify="end" className="tabular">{s.sold}</Table.Cell>
-                    <Table.Cell justify="end" className="tabular">{s.reserved}</Table.Cell>
-                    <Table.Cell justify="end" className="tabular">{s.free}</Table.Cell>
-                    <Table.Cell justify="end" className="tabular">{s.checkedIn}</Table.Cell>
-                    <Table.Cell justify="end" className="tabular">{formatPercent(s.fillPercent)}</Table.Cell>
-                    <Table.Cell justify="end" className="tabular">{formatPrice(s.revenue)}</Table.Cell>
-                  </Table.Row>
-                )
-              })}
-            </StatsTable>
+            <Flex direction="column" gap="4" minWidth="0">
+              <StatsTable>
+                {stats.map(s => {
+                  const selected = s.eventId === selectedId
+                  return (
+                    <Table.Row
+                      key={s.eventId}
+                      align="center"
+                      onClick={() => setSelectedId(s.eventId)}
+                      style={{
+                        cursor: 'pointer',
+                        backgroundColor: selected ? 'var(--accent-a4)' : undefined,
+                      }}
+                    >
+                      <Table.RowHeaderCell>
+                        {/* The button makes the row usable with the keyboard; its click reaches the row's onClick. */}
+                        <Link asChild weight={selected ? 'bold' : 'medium'} highContrast={selected}>
+                          <button
+                            type="button"
+                            aria-pressed={selected}
+                            style={{ background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                          >
+                            {s.name}
+                          </button>
+                        </Link>
+                      </Table.RowHeaderCell>
+                      <Table.Cell justify="end" className="tabular">{s.sold}</Table.Cell>
+                      <Table.Cell justify="end" className="tabular">{s.reserved}</Table.Cell>
+                      <Table.Cell justify="end" className="tabular">{s.free}</Table.Cell>
+                      <Table.Cell justify="end" className="tabular">{s.checkedIn}</Table.Cell>
+                      <Table.Cell justify="end" className="tabular">{formatPercent(s.fillPercent)}</Table.Cell>
+                      <Table.Cell justify="end" className="tabular">{formatPrice(s.revenue)}</Table.Cell>
+                    </Table.Row>
+                  )
+                })}
+              </StatsTable>
+
+              <Card size="3">
+                <FillPercentBars stats={stats} onSelect={setSelectedId} />
+              </Card>
+            </Flex>
 
             {selectedId === null ? (
               <Card size="3">
@@ -202,13 +205,12 @@ function EventStatsCard({ eventId, onLoaded }: EventStatsCardProps) {
         ) : (
           <>
             <Heading as="h2" size="5" mb="4" id="event-stats-heading">{current.name}</Heading>
-            <DataList.Root>
+            {/* Sold, reserved and free are in the donut's legend. */}
+            <SeatSplitDonut stats={current} />
+            <DataList.Root mt="4">
               <StatItem label="Kohti kokku" value={current.totalSeats} />
-              <StatItem label="Müüdud" value={current.sold} />
-              <StatItem label="Broneeritud" value={current.reserved} />
-              <StatItem label="Vabu" value={current.free} />
-              <StatItem label="Kasutatud" value={`${current.checkedIn} / ${current.sold}`} />
               <StatItem label="Täituvus" value={formatPercent(current.fillPercent)} />
+              <StatItem label="Kasutatud" value={`${current.checkedIn} / ${current.sold}`} />
               <StatItem label="Tulu" value={formatPrice(current.revenue)} />
             </DataList.Root>
           </>

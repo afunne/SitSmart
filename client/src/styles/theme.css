@@ -24,6 +24,9 @@
   --seat-reserved: #8E7AA8;
   --seat-sold: #6E2340;     /* always paired with an Off White X icon */
   --seat-selected: var(--ruby);
+  /* Sold in charts (admin stats): --seat-sold is only 1.56:1 on Deep Plum, this is 3.25:1 and stays
+     apart from Reserved for color-blind readers too. */
+  --seat-sold-chart: #C8384F;
 
   /* ---- Status ---- */
   --success: #4CC38A;

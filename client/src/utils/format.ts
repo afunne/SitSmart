@@ -33,6 +33,13 @@ export function formatPrice(price: number): string {
   return priceFormat.format(price)
 }
 
+const percentFormat = new Intl.NumberFormat('et-EE', { style: 'percent', maximumFractionDigits: 1 })
+
+/** A percentage given as 0–100, e.g. 33.3 → "33,3%" */
+export function formatPercent(percent: number): string {
+  return percentFormat.format(percent / 100)
+}
+
 /** Row number as shown in the hall: 1 → "A", 26 → "Z", 27 → "AA" (halls have up to 50 rows). */
 export function rowLabel(row: number): string {
   let label = ''

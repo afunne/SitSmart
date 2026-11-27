@@ -29,6 +29,8 @@ The frontend is React with [Radix Themes](https://www.radix-ui.com/themes). Our 
 | Sold | `#6E2340` | Off White, plus an X icon |
 | Selected | `#E0457B` | Ink Purple |
 
+In charts, Sold is `--seat-sold-chart` `#C8384F`: `#6E2340` is too dark to see on Deep Plum (1.56:1).
+
 ### Status colors
 
 | Status | Hex | Radix color |

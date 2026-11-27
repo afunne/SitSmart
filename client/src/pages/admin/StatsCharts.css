@@ -1,0 +1,94 @@
+/* Recharts charts on the admin stats page (StatsCharts.tsx). */
+
+.chart-figure {
+  margin: 0;
+}
+
+.chart-figure figcaption {
+  margin-bottom: var(--space-2);
+}
+
+/* ---- Donut with the fill % in the middle ---- */
+
+.donut {
+  position: relative;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Lets the pointer reach the segments' tooltips through the label. */
+  pointer-events: none;
+}
+
+.donut-center-value {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-6);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.donut-center-label {
+  font-size: var(--font-size-1);
+  color: var(--gray-11);
+}
+
+/* ---- Legend: swatch, name, number ---- */
+
+.chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chart-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.chart-legend-value {
+  margin-left: auto;
+}
+
+/* ---- Dark tooltip ---- */
+
+.chart-tooltip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--ink);
+  color: var(--off-white);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  font-size: var(--font-size-2);
+  white-space: nowrap;
+}
+
+/* A short line in the series color identifies the value. */
+.chart-tooltip-key {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* The swatches carry identity in print too. */
+@media print {
+  .chart-legend-swatch,
+  .chart-tooltip-key {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
