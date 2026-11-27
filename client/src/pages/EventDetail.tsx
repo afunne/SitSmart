@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -335,7 +336,17 @@ export default function EventDetail() {
     if (current.state !== 'Mine') pulse(message.seatId)
   }
 
-  useSeatSocket(eventId, handleSeatMessage)
+  /** Changes made while offline were missed, so the seats (and a buyer's holds) are fetched again. */
+  const handleReconnect = () => {
+    toast.success('Ühendus taastatud', { id: 'socket-reconnected' })
+    if (isBuyer) {
+      void resync()
+    } else {
+      reloadSeats().catch((err) => toast.error(errorMessage(err)))
+    }
+  }
+
+  const { connected } = useSeatSocket(eventId, handleSeatMessage, handleReconnect)
 
   return (
     <Container size="4" px="4">
@@ -394,7 +405,15 @@ export default function EventDetail() {
               </Box>
             </Flex>
 
-            <Heading as="h2" size="6" mb="3">Vali koht</Heading>
+            <Flex align="center" gap="3" wrap="wrap" mb="3">
+              <Heading as="h2" size="6">Vali koht</Heading>
+              {!connected && (
+                <Badge size="2" color="amber" variant="solid" role="status">
+                  <i className="ti ti-wifi-off" aria-hidden="true" />
+                  Ühendus katkes - proovin uuesti...
+                </Badge>
+              )}
+            </Flex>
 
             <Grid columns={{ initial: '1', md: '1fr 300px' }} gap="4" align="start">
               {/* minWidth 0 lets a wide hall scroll inside the card instead of stretching the grid. */}
