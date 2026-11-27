@@ -6,10 +6,8 @@ using Piletimyyk.Api.Services;
 
 namespace Piletimyyk.Api.Controllers;
 
-/// <summary>
-/// Buyers hold seats while they check out, then buy them or release them again; the worker
-/// (Service role) releases expired holds.
-/// </summary>
+/* Buyers hold seats while they check out, then buy them or release them again; the worker
+   (Service role) releases expired holds. */
 [ApiController]
 // Roles are set per action: a class-level role would also apply to every action and can't be
 // loosened there.
@@ -28,7 +26,7 @@ public class ReservationsController : ControllerBase
         _purchaseService = purchaseService;
     }
 
-    /// <summary>Holds a seat for Reservations:HoldMinutes. 409 if the seat is taken or the user is at the limit.</summary>
+    // Holds a seat for Reservations:HoldMinutes. 409 if the seat is taken or the user is at the limit.
     [HttpPost("api/events/{eventId:int}/reservations")]
     [Authorize(Roles = Roles.Buyer)]
     [ProducesResponseType(typeof(ReservationDto), StatusCodes.Status201Created)]
@@ -45,7 +43,7 @@ public class ReservationsController : ControllerBase
             : this.ToActionResult(result);
     }
 
-    /// <summary>The caller's active holds (all events), so the client can list and cancel them after a reload.</summary>
+    // The caller's active holds (all events), so the client can list and cancel them after a reload.
     [HttpGet("api/reservations/my")]
     [Authorize(Roles = Roles.Buyer)]
     [ProducesResponseType(typeof(IReadOnlyList<ReservationDto>), StatusCodes.Status200OK)]
@@ -54,7 +52,7 @@ public class ReservationsController : ControllerBase
         return Ok(await _reservationService.GetActiveAsync(User.GetRequiredUserId()));
     }
 
-    /// <summary>Cancels one of the caller's own holds.</summary>
+    // Cancels one of the caller's own holds.
     [HttpDelete("api/reservations/{id:int}")]
     [Authorize(Roles = Roles.Buyer)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -64,7 +62,7 @@ public class ReservationsController : ControllerBase
         return this.ToNoContentResult(await _reservationService.CancelAsync(id, User.GetRequiredUserId()));
     }
 
-    /// <summary>Buys a held seat: the reservation becomes a ticket. 409 if the hold has expired.</summary>
+    // Buys a held seat: the reservation becomes a ticket. 409 if the hold has expired.
     [HttpPost("api/reservations/{id:int}/purchase")]
     [Authorize(Roles = Roles.Buyer)]
     [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
@@ -75,7 +73,7 @@ public class ReservationsController : ControllerBase
         return this.ToActionResult(await _purchaseService.PurchaseAsync(id, User.GetRequiredUserId()));
     }
 
-    /// <summary>Deletes all expired holds and returns the seats that became free. Called by the worker.</summary>
+    // Deletes all expired holds and returns the seats that became free. Called by the worker.
     [HttpPost("api/reservations/release-expired")]
     [Authorize(Roles = Roles.Service)]
     [ProducesResponseType(typeof(ReleaseExpiredResponse), StatusCodes.Status200OK)]

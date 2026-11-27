@@ -4,18 +4,18 @@ namespace Piletimyyk.Api.Services;
 
 public interface IQrCodeService
 {
-    /// <summary>A PNG QR code for <paramref name="text"/>, Ink Purple on white with a quiet zone.</summary>
+    // A PNG QR code for text, Ink Purple on white with a quiet zone.
     byte[] GeneratePng(string text);
 }
 
 public class QrCodeService : IQrCodeService
 {
-    /// <summary>Ink Purple (#1C0F26) from the design palette, as RGB.</summary>
+    // Ink Purple (#1C0F26) from the design palette, as RGB.
     private static readonly byte[] DarkRgb = [0x1C, 0x0F, 0x26];
 
     private static readonly byte[] LightRgb = [0xFF, 0xFF, 0xFF];
 
-    /// <summary>A 12-character ticket code fits in 21×21 modules; with the 4-module quiet zone on each side the PNG is 290×290 px.</summary>
+    // A 12-character ticket code fits in 21×21 modules; with the 4-module quiet zone on each side the PNG is 290×290 px.
     private const int PixelsPerModule = 10;
 
     public byte[] GeneratePng(string text)

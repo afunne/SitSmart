@@ -6,11 +6,9 @@ namespace Piletimyyk.Api.Services;
 
 public interface ISeatService
 {
-    /// <summary>
-    /// Seat map of an event's hall with the current state of every seat.
-    /// When <paramref name="currentUserId"/> is given, seats held by that user's active
-    /// reservations are marked <see cref="SeatStates.Mine"/> instead of Reserved.
-    /// </summary>
+    /* Seat map of an event's hall with the current state of every seat.
+       When currentUserId is given, seats held by that user's active
+       reservations are marked SeatStates.Mine instead of Reserved. */
     Task<ServiceResult<SeatMapDto>> GetSeatMapAsync(int eventId, int? currentUserId = null);
 }
 

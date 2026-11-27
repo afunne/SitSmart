@@ -29,7 +29,7 @@ public class EventService : IEventService
         _db = db;
     }
 
-    /// <summary>Upcoming events first (soonest first), then past events (most recent first).</summary>
+    // Upcoming events first (soonest first), then past events (most recent first).
     public async Task<IReadOnlyList<EventDto>> GetAllAsync()
     {
         var now = DateTime.UtcNow;
@@ -241,10 +241,8 @@ public class EventService : IEventService
             price);
     }
 
-    /// <summary>
-    /// Times are stored in UTC. JSON times with "Z" or an offset arrive as Utc/Local;
-    /// a time without an offset (Unspecified) is assumed to already be UTC.
-    /// </summary>
+    /* Times are stored in UTC. JSON times with "Z" or an offset arrive as Utc/Local;
+       a time without an offset (Unspecified) is assumed to already be UTC. */
     private static DateTime ToUtc(DateTime value) => value.Kind switch
     {
         DateTimeKind.Utc => value,
@@ -260,7 +258,7 @@ public class EventService : IEventService
         return $"Üritust ei saa kustutada, sest sellele on müüdud {tickets}.";
     }
 
-    /// <summary>Validated and normalized request values.</summary>
+    // Validated and normalized request values.
     private record EventInput(
         string Name,
         string? Description,

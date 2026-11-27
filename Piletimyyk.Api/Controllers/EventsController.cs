@@ -6,7 +6,7 @@ using Piletimyyk.Api.Services;
 
 namespace Piletimyyk.Api.Controllers;
 
-/// <summary>Anyone can browse events; only admins can create, change or delete them.</summary>
+// Anyone can browse events; only admins can create, change or delete them.
 [ApiController]
 [Route("api/events")]
 [Authorize(Roles = Roles.Admin)]
@@ -38,11 +38,9 @@ public class EventsController : ControllerBase
         return this.ToActionResult(await _eventService.GetByIdAsync(id));
     }
 
-    /// <summary>
-    /// Seat map with the state of every seat. With a valid token, the caller's own
-    /// reservations are shown as "Mine"; without one (or with an invalid one) the
-    /// request is treated as anonymous.
-    /// </summary>
+    /* Seat map with the state of every seat. With a valid token, the caller's own
+       reservations are shown as "Mine"; without one (or with an invalid one) the
+       request is treated as anonymous. */
     [HttpGet("{id:int}/seats")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(SeatMapDto), StatusCodes.Status200OK)]

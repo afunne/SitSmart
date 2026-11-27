@@ -1,6 +1,6 @@
 namespace Piletimyyk.Api.Dtos;
 
-/// <summary>StartsAt is in UTC.</summary>
+// StartsAt is in UTC.
 public record EventDto(
     int Id,
     string Name,

@@ -126,10 +126,8 @@ public class HallService : IHallService
         return ServiceResult.Ok();
     }
 
-    /// <summary>
-    /// Rows and SeatsPerRow aren't stored; seats always form a full grid
-    /// (rows 1..Rows, numbers 1..SeatsPerRow), so they are the highest row and seat number.
-    /// </summary>
+    /* Rows and SeatsPerRow aren't stored; seats always form a full grid
+       (rows 1..Rows, numbers 1..SeatsPerRow), so they are the highest row and seat number. */
     private static IQueryable<HallDto> ToDtos(IQueryable<Hall> halls)
     {
         return halls.Select(h => new HallDto(

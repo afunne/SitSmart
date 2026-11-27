@@ -9,25 +9,19 @@ namespace Piletimyyk.Api.Services;
 
 public interface IReservationService
 {
-    /// <summary>
-    /// Holds a seat for the user for Reservations:HoldMinutes.
-    /// NotFound: event or seat doesn't exist. Validation: event has started, or the seat is
-    /// in another hall. Conflict: seat is sold or held, or the user is at the reservation limit.
-    /// </summary>
+    /* Holds a seat for the user for Reservations:HoldMinutes.
+       NotFound: event or seat doesn't exist. Validation: event has started, or the seat is
+       in another hall. Conflict: seat is sold or held, or the user is at the reservation limit. */
     Task<ServiceResult<ReservationDto>> ReserveAsync(int eventId, int seatId, int userId);
 
-    /// <summary>
-    /// Releases a hold. NotFound: no such reservation. Forbidden: it belongs to another user.
-    /// </summary>
+    // Releases a hold. NotFound: no such reservation. Forbidden: it belongs to another user.
     Task<ServiceResult> CancelAsync(int reservationId, int userId);
 
-    /// <summary>The user's unexpired holds across all events, soonest to expire first.</summary>
+    // The user's unexpired holds across all events, soonest to expire first.
     Task<IReadOnlyList<ReservationDto>> GetActiveAsync(int userId);
 
-    /// <summary>
-    /// Deletes all expired holds (ExpiresAt &lt;= now) and returns the seats they freed.
-    /// Run periodically by the worker.
-    /// </summary>
+    /* Deletes all expired holds (ExpiresAt <= now) and returns the seats they freed.
+       Run periodically by the worker. */
     Task<ReleaseExpiredResponse> ReleaseExpiredAsync();
 }
 
@@ -35,7 +29,7 @@ public class ReservationService : IReservationService
 {
     public const int MaxActiveReservationsPerUser = 6;
 
-    /// <summary>Same message for sold and held seats: buyers don't need to know which.</summary>
+    // Same message for sold and held seats: buyers don't need to know which.
     private const string SeatTaken = "Koht on juba võetud";
 
     private readonly AppDbContext _db;

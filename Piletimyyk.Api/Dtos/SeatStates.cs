@@ -1,14 +1,14 @@
 namespace Piletimyyk.Api.Dtos;
 
-/// <summary>Values of <see cref="SeatDto.State"/>.</summary>
+// Values of SeatDto.State.
 public static class SeatStates
 {
     public const string Free = "Free";
 
-    /// <summary>Held by an active (unexpired) reservation of another user.</summary>
+    // Held by an active (unexpired) reservation of another user.
     public const string Reserved = "Reserved";
 
-    /// <summary>Held by an active reservation of the current user.</summary>
+    // Held by an active reservation of the current user.
     public const string Mine = "Mine";
 
     public const string Sold = "Sold";

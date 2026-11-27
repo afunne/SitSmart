@@ -6,10 +6,8 @@ using Piletimyyk.Api.Services;
 
 namespace Piletimyyk.Api.Controllers;
 
-/// <summary>
-/// Buyers see the tickets they have bought; owners and admins can get a ticket's QR code;
-/// controllers check tickets in at the door.
-/// </summary>
+/* Buyers see the tickets they have bought; owners and admins can get a ticket's QR code;
+   controllers check tickets in at the door. */
 [ApiController]
 [Route("api/tickets")]
 // Roles are set per action: a class-level role would also apply to every action and can't be
@@ -28,7 +26,7 @@ public class TicketsController : ControllerBase
         _checkInService = checkInService;
     }
 
-    /// <summary>The caller's tickets: upcoming events first (soonest first), then past ones.</summary>
+    // The caller's tickets: upcoming events first (soonest first), then past ones.
     [HttpGet("my")]
     [Authorize(Roles = Roles.Buyer)]
     [ProducesResponseType(typeof(IReadOnlyList<TicketDto>), StatusCodes.Status200OK)]
@@ -37,7 +35,7 @@ public class TicketsController : ControllerBase
         return Ok(await _ticketService.GetForUserAsync(User.GetRequiredUserId()));
     }
 
-    /// <summary>QR code of the ticket code as a PNG. Only for the ticket's owner or an admin.</summary>
+    // QR code of the ticket code as a PNG. Only for the ticket's owner or an admin.
     [HttpGet("{code}/qr")]
     [Produces("image/png", "application/problem+json")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK, "image/png")]
@@ -48,7 +46,7 @@ public class TicketsController : ControllerBase
         return this.ToFileResult(result, "image/png");
     }
 
-    /// <summary>Marks the ticket as used. 409 if it was already used (the message says when).</summary>
+    // Marks the ticket as used. 409 if it was already used (the message says when).
     [HttpPost("{code}/check-in")]
     [Authorize(Roles = Roles.Controller)]
     [ProducesResponseType(typeof(CheckInResultDto), StatusCodes.Status200OK)]

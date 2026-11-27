@@ -1,6 +1,6 @@
 namespace Piletimyyk.Api.Dtos;
 
-/// <summary>StartsAt, PurchasedAt and UsedAt are in UTC. UsedAt is null until the ticket is scanned.</summary>
+// StartsAt, PurchasedAt and UsedAt are in UTC. UsedAt is null until the ticket is scanned.
 public record TicketDto(
     int Id,
     string Code,

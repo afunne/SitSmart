@@ -1,6 +1,6 @@
 namespace Piletimyyk.Api.Dtos;
 
-/// <summary>StartsAt should be sent in UTC (ISO 8601 with "Z"); a time without an offset is treated as UTC.</summary>
+// StartsAt should be sent in UTC (ISO 8601 with "Z"); a time without an offset is treated as UTC.
 public record CreateEventRequest(
     string Name,
     string Description,

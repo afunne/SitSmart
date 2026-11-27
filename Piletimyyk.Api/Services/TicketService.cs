@@ -6,16 +6,12 @@ namespace Piletimyyk.Api.Services;
 
 public interface ITicketService
 {
-    /// <summary>
-    /// The user's tickets: upcoming events first (soonest first), then past events
-    /// (most recent first).
-    /// </summary>
+    /* The user's tickets: upcoming events first (soonest first), then past events
+       (most recent first). */
     Task<IReadOnlyList<TicketDto>> GetForUserAsync(int userId);
 
-    /// <summary>
-    /// PNG QR code of the ticket code. NotFound: no such ticket. Forbidden: the ticket belongs to
-    /// someone else and the caller isn't an admin.
-    /// </summary>
+    /* PNG QR code of the ticket code. NotFound: no such ticket. Forbidden: the ticket belongs to
+       someone else and the caller isn't an admin. */
     Task<ServiceResult<byte[]>> GetQrPngAsync(string code, int userId, bool isAdmin);
 }
 

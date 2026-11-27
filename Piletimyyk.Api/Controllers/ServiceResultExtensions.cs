@@ -3,20 +3,18 @@ using Piletimyyk.Api.Services;
 
 namespace Piletimyyk.Api.Controllers;
 
-/// <summary>
-/// Maps ServiceResult to HTTP responses. Errors are returned as ProblemDetails with the
-/// user-facing message in "detail" (and "message"):
-/// NotFound → 404, Validation → 400, Conflict → 409, Forbidden → 403.
-/// </summary>
+/* Maps ServiceResult to HTTP responses. Errors are returned as ProblemDetails with the
+   user-facing message in "detail" (and "message"):
+   NotFound → 404, Validation → 400, Conflict → 409, Forbidden → 403. */
 public static class ServiceResultExtensions
 {
-    /// <summary>200 OK with the value, or the error response.</summary>
+    // 200 OK with the value, or the error response.
     public static ActionResult<T> ToActionResult<T>(this ControllerBase controller, ServiceResult<T> result)
     {
         return result.Success ? controller.Ok(result.Value) : controller.ToErrorResult(result);
     }
 
-    /// <summary>201 Created with a Location header pointing to <paramref name="actionName"/>, or the error response.</summary>
+    // 201 Created with a Location header pointing to actionName, or the error response.
     public static ActionResult<T> ToCreatedResult<T>(
         this ControllerBase controller,
         ServiceResult<T> result,
@@ -28,13 +26,13 @@ public static class ServiceResultExtensions
             : controller.ToErrorResult(result);
     }
 
-    /// <summary>200 OK with the bytes as a file of <paramref name="contentType"/>, or the error response.</summary>
+    // 200 OK with the bytes as a file of contentType, or the error response.
     public static IActionResult ToFileResult(this ControllerBase controller, ServiceResult<byte[]> result, string contentType)
     {
         return result.Success ? controller.File(result.Value!, contentType) : controller.ToErrorResult(result);
     }
 
-    /// <summary>204 No Content, or the error response.</summary>
+    // 204 No Content, or the error response.
     public static IActionResult ToNoContentResult(this ControllerBase controller, ServiceResult result)
     {
         return result.Success ? controller.NoContent() : controller.ToErrorResult(result);

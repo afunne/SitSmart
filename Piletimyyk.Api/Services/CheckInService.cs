@@ -6,10 +6,8 @@ namespace Piletimyyk.Api.Services;
 
 public interface ICheckInService
 {
-    /// <summary>
-    /// Marks the ticket as used. NotFound: no such ticket. Conflict: it was already used
-    /// (the message includes when, and ErrorData["usedAt"] has the UTC time).
-    /// </summary>
+    /* Marks the ticket as used. NotFound: no such ticket. Conflict: it was already used
+       (the message includes when, and ErrorData["usedAt"] has the UTC time). */
     Task<ServiceResult<CheckInResultDto>> CheckInAsync(string code);
 }
 

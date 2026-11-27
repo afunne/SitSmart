@@ -8,11 +8,9 @@ namespace Piletimyyk.Api.Services;
 
 public interface IPurchaseService
 {
-    /// <summary>
-    /// Turns the user's reservation into a ticket at the event's current price and deletes the
-    /// reservation. NotFound: no such reservation. Forbidden: it belongs to another user.
-    /// Conflict: the hold has expired, or the seat is already sold.
-    /// </summary>
+    /* Turns the user's reservation into a ticket at the event's current price and deletes the
+       reservation. NotFound: no such reservation. Forbidden: it belongs to another user.
+       Conflict: the hold has expired, or the seat is already sold. */
     Task<ServiceResult<TicketDto>> PurchaseAsync(int reservationId, int userId);
 }
 
